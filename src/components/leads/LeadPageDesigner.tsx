@@ -3,6 +3,7 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
+import Modal from '../ui/Modal';
 import { HexColorPicker } from 'react-colorful';
 import { FormField } from '../../types';
 import LeadPageTemplates from './LeadPageTemplates';
@@ -19,8 +20,11 @@ import {
   Eye,
   Code,
   Save,
-  ArrowLeft
+  ArrowLeft,
+  Copy,
+  Check
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 interface LeadPageDesignerProps {
   onSave: (formData: any) => void;
@@ -44,6 +48,9 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData
     text: '#000000'
   });
   const [showColorPicker, setShowColorPicker] = useState<string | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleSelectTemplate = (template: any) => {
     setFormName(template.name);
@@ -88,6 +95,11 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData
   };
 
   const handleSave = () => {
+    if (!formName.trim()) {
+      toast.error('Please enter a form name');
+      return;
+    }
+
     onSave({
       name: formName,
       description: formDescription,
@@ -96,6 +108,82 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData
       theme,
       customColors
     });
+  };
+
+  const handlePreview = () => {
+    if (!formName.trim()) {
+      toast.error('Please enter a form name to preview');
+      return;
+    }
+    setShowPreviewModal(true);
+  };
+
+  const handleExportCode = () => {
+    if (!formName.trim()) {
+      toast.error('Please save the form first to get export code');
+      return;
+    }
+    setShowExportModal(true);
+  };
+
+  const generateEmbedCode = () => {
+    const formId = initialData?.id || 'new-form';
+    return `<!-- WhatsApp Lead Form Widget -->
+<div id="whatsapp-lead-form-${formId}"></div>
+<script src="https://whatsapp-autoresponder.com/widgets/lead-form.js"></script>
+<script>
+  WhatsAppLeadForm.init({
+    formId: "${formId}",
+    containerId: "whatsapp-lead-form-${formId}",
+    theme: "${theme}",
+    ${theme === 'custom' ? `customColors: ${JSON.stringify(customColors)},` : ''}
+    ${redirectUrl ? `redirectUrl: "${redirectUrl}",` : ''}
+    onSuccess: function(data) {
+      console.log('Form submitted:', data);
+      ${redirectUrl ? `window.location.href = "${redirectUrl}";` : '// Handle success'}
+    }
+  });
+</script>`;
+  };
+
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(generateEmbedCode());
+      setCopied(true);
+      toast.success('Embed code copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast.error('Failed to copy embed code');
+    }
+  };
+
+  const getThemeStyles = () => {
+    if (theme === 'dark') {
+      return 'bg-gray-900 text-white';
+    } else if (theme === 'custom' && customColors) {
+      return '';
+    }
+    return 'bg-white text-gray-900';
+  };
+
+  const getCustomStyles = () => {
+    if (theme === 'custom' && customColors) {
+      return {
+        backgroundColor: customColors.background,
+        color: customColors.text,
+      };
+    }
+    return {};
+  };
+
+  const getButtonStyles = () => {
+    if (theme === 'custom' && customColors) {
+      return {
+        backgroundColor: customColors.primary,
+        color: customColors.background,
+      };
+    }
+    return theme === 'dark' ? 'bg-white text-gray-900' : 'bg-primary-500 text-white';
   };
 
   if (showTemplates) {
@@ -140,6 +228,7 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Enter form name"
+                  required
                 />
                 <Input
                   label="Description"
@@ -377,6 +466,7 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData
                 variant="outline"
                 fullWidth
                 leftIcon={<Eye size={16} />}
+                onClick={handlePreview}
               >
                 Preview Form
               </Button>
@@ -384,6 +474,7 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData
                 variant="outline"
                 fullWidth
                 leftIcon={<Code size={16} />}
+                onClick={handleExportCode}
               >
                 Export Code
               </Button>
@@ -399,6 +490,124 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData
           </CardContent>
         </Card>
       </div>
+
+      {/* Preview Modal */}
+      <Modal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        title="Lead Page Preview"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div className="bg-gray-100 p-4 rounded-lg">
+            <p className="text-sm text-gray-600 mb-2">Preview URL:</p>
+            <code className="text-sm bg-white p-2 rounded border">
+              https://whatsapp-autoresponder.com/l/{initialData?.id || 'new-form'}
+            </code>
+          </div>
+          
+          <div className="border rounded-lg overflow-hidden">
+            <div 
+              className={`p-8 ${getThemeStyles()}`}
+              style={getCustomStyles()}
+            >
+              <div className="max-w-md mx-auto">
+                <h2 className="text-2xl font-bold mb-2">{formName}</h2>
+                {formDescription && (
+                  <p className="mb-6 opacity-80">{formDescription}</p>
+                )}
+                
+                <form className="space-y-4">
+                  {fields.map((field) => (
+                    <div key={field.id}>
+                      <label className="block text-sm font-medium mb-1">
+                        {field.label}
+                        {field.required && <span className="text-red-500 ml-1">*</span>}
+                      </label>
+                      {field.type === 'select' ? (
+                        <select 
+                          className="w-full p-2 border rounded-md"
+                          disabled
+                        >
+                          <option>{field.placeholder}</option>
+                          {field.options?.map((option, i) => (
+                            <option key={i} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      ) : field.type === 'checkbox' ? (
+                        <div className="flex items-center">
+                          <input 
+                            type="checkbox" 
+                            className="mr-2"
+                            disabled
+                          />
+                          <span className="text-sm">{field.label}</span>
+                        </div>
+                      ) : (
+                        <input
+                          type={field.type}
+                          placeholder={field.placeholder}
+                          className="w-full p-2 border rounded-md"
+                          disabled
+                        />
+                      )}
+                    </div>
+                  ))}
+                  
+                  <button
+                    type="button"
+                    className={`w-full py-2 px-4 rounded-md font-medium ${getButtonStyles()}`}
+                    disabled
+                  >
+                    Submit
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Export Code Modal */}
+      <Modal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="Export Embed Code"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Embed Code
+            </label>
+            <div className="relative">
+              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg text-sm overflow-x-auto max-h-64">
+                <code>{generateEmbedCode()}</code>
+              </pre>
+              <Button
+                onClick={handleCopyCode}
+                className="absolute top-2 right-2"
+                size="sm"
+                variant="outline"
+                leftIcon={copied ? <Check size={16} /> : <Copy size={16} />}
+              >
+                {copied ? 'Copied!' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h4 className="font-medium text-blue-900 mb-2">Integration Instructions:</h4>
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• Copy the embed code above</li>
+              <li>• Paste it into your website's HTML where you want the form to appear</li>
+              <li>• The form will automatically load and handle submissions</li>
+              <li>• Customize the styling using CSS if needed</li>
+              {redirectUrl && <li>• Users will be redirected to: {redirectUrl}</li>}
+            </ul>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
