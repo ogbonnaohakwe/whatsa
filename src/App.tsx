@@ -40,6 +40,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import UsersPage from './pages/admin/UsersPage';
 import AnalyticsPage from './pages/admin/AnalyticsPage';
 import SecurityPage from './pages/admin/SecurityPage';
+import IntegrationsManagement from './pages/admin/IntegrationsManagement';
+import EmailSettings from './pages/admin/EmailSettings';
 
 // Protected Route Components
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -80,7 +82,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={
           isAuthenticated ? (
-            <Navigate to="/dashboard\" replace />
+            <Navigate to="/dashboard" replace />
           ) : (
             <PublicLayout>
               <HomePage />
@@ -161,6 +163,16 @@ function App() {
         <Route path="/admin/security" element={
           <AdminRoute>
             <SecurityPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/integrations" element={
+          <AdminRoute>
+            <IntegrationsManagement />
+          </AdminRoute>
+        } />
+        <Route path="/admin/email-settings" element={
+          <AdminRoute>
+            <EmailSettings />
           </AdminRoute>
         } />
         
