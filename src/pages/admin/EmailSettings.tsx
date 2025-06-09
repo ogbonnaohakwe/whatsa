@@ -377,7 +377,7 @@ The WhatsApp Autoresponder Team`,
                             key={variable}
                             className="flex items-center space-x-2 bg-gray-100 px-3 py-1 rounded-md"
                           >
-                            <code className="text-sm">{{`{${variable}}`}}</code>
+                            <code className="text-sm">{`{{${variable}}}`}</code>
                             <button
                               onClick={() => handleCopyToClipboard(`{{${variable}}}`, variable)}
                               className="text-gray-400 hover:text-gray-600"
