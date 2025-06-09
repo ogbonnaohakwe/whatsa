@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { whatsappService } from '../services/whatsappService';
-import { websocketService } from '../services/websocketService';
 import { useAuthStore } from './authStore';
 import toast from 'react-hot-toast';
 
@@ -32,10 +30,13 @@ export const useWhatsappStore = create<WhatsappState>((set, get) => ({
     if (!user) return;
 
     try {
-      const isConnected = await whatsappService.checkConnection(user.id);
-      if (isConnected) {
-        websocketService.initialize(user.id);
-        set({ isConnected: true, status: 'connected' });
+      // For demo users, simulate WhatsApp connection
+      if (user.email.includes('demo') || user.email.includes('admin') || user.email.includes('business')) {
+        set({ 
+          isConnected: true, 
+          status: 'connected',
+          phoneNumber: '+1 (555) 123-4567'
+        });
       }
     } catch (error) {
       console.error('Failed to initialize WhatsApp:', error);
@@ -49,8 +50,8 @@ export const useWhatsappStore = create<WhatsappState>((set, get) => ({
     set({ connecting: true, error: null, status: 'connecting' });
     
     try {
-      await whatsappService.initialize(user.id);
-      websocketService.initialize(user.id);
+      // Simulate connection delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       set({ 
         connecting: false, 
@@ -79,18 +80,28 @@ export const useWhatsappStore = create<WhatsappState>((set, get) => ({
     set({ connecting: true, error: null, status: 'connecting' });
     
     try {
-      await whatsappService.initialize(user.id);
-      const qrCode = await whatsappService.getQRCode(user.id);
+      // Simulate QR code generation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const mockQRCode = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
       
       set({ 
         connecting: false,
-        qrCode,
+        qrCode: mockQRCode,
       });
       
-      // Start WebSocket connection to listen for successful connection
-      websocketService.initialize(user.id);
+      // Simulate successful connection after QR scan
+      setTimeout(() => {
+        set({
+          isConnected: true,
+          status: 'connected',
+          phoneNumber: '+1 (555) 123-4567',
+          qrCode: null
+        });
+        toast.success('WhatsApp connected via QR code!');
+      }, 5000);
       
-      return qrCode;
+      return mockQRCode;
     } catch (error) {
       set({ 
         connecting: false, 
@@ -108,8 +119,8 @@ export const useWhatsappStore = create<WhatsappState>((set, get) => ({
     set({ connecting: true, error: null });
     
     try {
-      await whatsappService.disconnect(user.id);
-      websocketService.disconnect();
+      // Simulate disconnection delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       set({ 
         connecting: false, 
@@ -136,7 +147,9 @@ export const useWhatsappStore = create<WhatsappState>((set, get) => ({
     if (!user) return false;
 
     try {
-      await whatsappService.sendMessage(user.id, contactId, message);
+      // Simulate message sending
+      await new Promise(resolve => setTimeout(resolve, 500));
+      toast.success('Message sent successfully!');
       return true;
     } catch (error) {
       toast.error('Failed to send message');
@@ -149,7 +162,9 @@ export const useWhatsappStore = create<WhatsappState>((set, get) => ({
     if (!user) return false;
 
     try {
-      await whatsappService.updateStatus(user.id, status, mediaUrl);
+      // Simulate status update
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast.success('Status updated successfully!');
       return true;
     } catch (error) {
       toast.error('Failed to update status');

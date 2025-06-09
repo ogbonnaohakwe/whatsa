@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 interface User {
   id: string;
@@ -21,6 +21,34 @@ interface AuthState {
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
 }
+
+// Demo user accounts
+const demoUsers = [
+  {
+    id: '1',
+    email: 'demo@whatsapp-autoresponder.com',
+    password: 'demo123',
+    name: 'Demo User',
+    role: 'user',
+    profilePicture: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100'
+  },
+  {
+    id: '2',
+    email: 'admin@whatsapp-autoresponder.com',
+    password: 'admin123',
+    name: 'Admin User',
+    role: 'admin',
+    profilePicture: 'https://images.pexels.com/photos/762020/pexels-photo-762020.jpeg?auto=compress&cs=tinysrgb&w=100'
+  },
+  {
+    id: '3',
+    email: 'business@whatsapp-autoresponder.com',
+    password: 'business123',
+    name: 'Business Owner',
+    role: 'user',
+    profilePicture: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100'
+  }
+];
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -43,41 +71,40 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
+          // Simulate API delay
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Check demo users
+          const demoUser = demoUsers.find(u => u.email === email && u.password === password);
+          
+          if (demoUser) {
+            const user: User = {
+              id: demoUser.id,
+              email: demoUser.email,
+              name: demoUser.name,
+              profilePicture: demoUser.profilePicture,
+              role: demoUser.role
+            };
 
-          if (error) throw error;
-
-          if (data.user) {
-            // Fetch the user's profile to get their role
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('role')
-              .eq('id', data.user.id)
-              .single();
-
-            if (profileError) throw profileError;
-
-            const isAdmin = profileData?.role === 'admin';
-
+            const isAdmin = demoUser.role === 'admin';
+            
             set({ 
-              user: {
-                id: data.user.id,
-                email: data.user.email!,
-                name: data.user.user_metadata.name || '',
-                profilePicture: data.user.user_metadata.avatar_url,
-                role: profileData?.role || 'user'
-              },
+              user,
               isAuthenticated: true,
-              token: data.session?.access_token || null,
+              token: `demo_token_${demoUser.id}`,
               isLoading: false,
             });
             
+            toast.success(`Welcome back, ${demoUser.name}!`);
             return { success: true, isAdmin };
+          } else {
+            // For non-demo accounts, show available demo accounts
+            set({ 
+              isLoading: false, 
+              error: 'Invalid credentials. Please use one of the demo accounts above.' 
+            });
+            return { success: false, isAdmin: false };
           }
-          return { success: false, isAdmin: false };
         } catch (error) {
           set({ 
             isLoading: false, 
@@ -91,32 +118,37 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: { name },
-            }
-          });
-
-          if (error) throw error;
-
-          if (data.user) {
+          // Simulate API delay
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          
+          // Check if email already exists in demo users
+          const existingUser = demoUsers.find(u => u.email === email);
+          if (existingUser) {
             set({ 
-              user: {
-                id: data.user.id,
-                email: data.user.email!,
-                name: data.user.user_metadata.name || '',
-                profilePicture: data.user.user_metadata.avatar_url,
-                role: 'user'
-              },
-              isAuthenticated: true,
-              token: data.session?.access_token || null,
-              isLoading: false,
+              isLoading: false, 
+              error: 'Email already exists. Please use the login form with demo credentials.' 
             });
-            return true;
+            return false;
           }
-          return false;
+          
+          // Create new demo user
+          const newUser: User = {
+            id: Date.now().toString(),
+            email,
+            name,
+            role: 'user',
+            profilePicture: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100'
+          };
+          
+          set({ 
+            user: newUser,
+            isAuthenticated: true,
+            token: `demo_token_${newUser.id}`,
+            isLoading: false,
+          });
+          
+          toast.success(`Welcome to WhatsApp Autoresponder, ${name}!`);
+          return true;
         } catch (error) {
           set({ 
             isLoading: false, 
@@ -128,15 +160,13 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try {
-          const { error } = await supabase.auth.signOut();
-          if (error) throw error;
-          
           set({ 
             user: null, 
             isAuthenticated: false, 
             token: null,
             error: null,
           });
+          toast.success('Logged out successfully');
         } catch (error) {
           set({ 
             error: error instanceof Error ? error.message : 'Failed to logout' 
