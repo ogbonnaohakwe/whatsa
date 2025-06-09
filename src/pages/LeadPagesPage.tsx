@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LeadPageDesigner from '../components/leads/LeadPageDesigner';
+import PreviewModal from '../components/modals/PreviewModal';
+import EmbedCodeModal from '../components/modals/EmbedCodeModal';
 import { mockOptinPages } from '../mock/mockData';
 import { formatDate } from '../lib/utils';
-import { Plus, ExternalLink, Copy, Edit, Trash, LineChart, Download, Code } from 'lucide-react';
+import { Plus, ExternalLink, Copy, Edit, Trash, LineChart, Download, Code, Eye, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { OptinPage } from '../types';
 import toast from 'react-hot-toast';
@@ -13,6 +15,8 @@ const LeadPagesPage: React.FC = () => {
   const [optinPages, setOptinPages] = useState<OptinPage[]>(mockOptinPages);
   const [showDesigner, setShowDesigner] = useState(false);
   const [editingPage, setEditingPage] = useState<OptinPage | null>(null);
+  const [previewPage, setPreviewPage] = useState<OptinPage | null>(null);
+  const [embedPage, setEmbedPage] = useState<OptinPage | null>(null);
 
   const handleSaveForm = (formData: any) => {
     const newPage: OptinPage = {
@@ -22,6 +26,7 @@ const LeadPagesPage: React.FC = () => {
       fields: formData.fields,
       theme: formData.theme,
       customColors: formData.customColors,
+      redirectUrl: formData.redirectUrl,
       createdAt: editingPage?.createdAt || new Date(),
       visits: editingPage?.visits || 0,
       conversions: editingPage?.conversions || 0,
@@ -47,21 +52,12 @@ const LeadPagesPage: React.FC = () => {
     setShowDesigner(true);
   };
 
-  const handleExportCode = (page: OptinPage) => {
-    const code = `
-<!-- WhatsApp Lead Form Widget -->
-<div id="whatsapp-lead-form-${page.id}"></div>
-<script src="https://whatsapp-autoresponder.com/widgets/lead-form.js"></script>
-<script>
-  WhatsAppLeadForm.init({
-    formId: "${page.id}",
-    containerId: "whatsapp-lead-form-${page.id}"
-  });
-</script>
-    `.trim();
+  const handlePreviewPage = (page: OptinPage) => {
+    setPreviewPage(page);
+  };
 
-    navigator.clipboard.writeText(code);
-    toast.success('Widget code copied to clipboard!');
+  const handleEmbedCode = (page: OptinPage) => {
+    setEmbedPage(page);
   };
 
   const handleExportJson = (page: OptinPage) => {
@@ -84,8 +80,11 @@ const LeadPagesPage: React.FC = () => {
   };
 
   const handleViewAnalytics = (page: OptinPage) => {
-    // In a real app, this would navigate to an analytics page
     toast.info('Analytics feature coming soon!');
+  };
+
+  const handleSettings = (page: OptinPage) => {
+    toast.info('Settings feature coming soon!');
   };
 
   return (
@@ -156,6 +155,14 @@ const LeadPagesPage: React.FC = () => {
                   <div className="flex justify-between">
                     <CardTitle>{page.name}</CardTitle>
                     <div className="flex space-x-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleSettings(page)}
+                      >
+                        <Settings size={16} />
+                      </Button>
                       <Button 
                         variant="ghost" 
                         size="sm" 
@@ -242,20 +249,30 @@ const LeadPagesPage: React.FC = () => {
                   </div>
                 </CardContent>
                 <CardFooter className="pt-0 flex justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<ExternalLink size={14} />}
-                    onClick={() => handleViewPage(page)}
-                  >
-                    View Page
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<Eye size={14} />}
+                      onClick={() => handlePreviewPage(page)}
+                    >
+                      Preview
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      leftIcon={<ExternalLink size={14} />}
+                      onClick={() => handleViewPage(page)}
+                    >
+                      View
+                    </Button>
+                  </div>
                   <div className="flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
                       leftIcon={<Code size={14} />}
-                      onClick={() => handleExportCode(page)}
+                      onClick={() => handleEmbedCode(page)}
                     >
                       Embed
                     </Button>
@@ -281,6 +298,23 @@ const LeadPagesPage: React.FC = () => {
             ))}
           </div>
         </motion.div>
+      )}
+
+      {/* Modals */}
+      {previewPage && (
+        <PreviewModal
+          isOpen={!!previewPage}
+          onClose={() => setPreviewPage(null)}
+          page={previewPage}
+        />
+      )}
+
+      {embedPage && (
+        <EmbedCodeModal
+          isOpen={!!embedPage}
+          onClose={() => setEmbedPage(null)}
+          pageId={embedPage.id}
+        />
       )}
     </div>
   );

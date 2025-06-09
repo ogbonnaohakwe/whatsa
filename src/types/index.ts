@@ -80,6 +80,7 @@ export interface OptinPage {
     background: string;
     text: string;
   };
+  redirectUrl?: string;
   targetGroup?: string;
   createdAt: Date;
   visits: number;

@@ -5,6 +5,7 @@ import Button from '../ui/Button';
 import Input from '../ui/Input';
 import { HexColorPicker } from 'react-colorful';
 import { FormField } from '../../types';
+import LeadPageTemplates from './LeadPageTemplates';
 import { 
   Plus, 
   Grip, 
@@ -17,28 +18,43 @@ import {
   Palette,
   Eye,
   Code,
-  Save
+  Save,
+  ArrowLeft
 } from 'lucide-react';
 
 interface LeadPageDesignerProps {
   onSave: (formData: any) => void;
+  initialData?: any;
 }
 
-const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave }) => {
-  const [formName, setFormName] = useState('');
-  const [formDescription, setFormDescription] = useState('');
-  const [fields, setFields] = useState<FormField[]>([
+const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave, initialData }) => {
+  const [showTemplates, setShowTemplates] = useState(!initialData);
+  const [formName, setFormName] = useState(initialData?.name || '');
+  const [formDescription, setFormDescription] = useState(initialData?.description || '');
+  const [redirectUrl, setRedirectUrl] = useState(initialData?.redirectUrl || '');
+  const [fields, setFields] = useState<FormField[]>(initialData?.fields || [
     { id: '1', type: 'text', label: 'Name', placeholder: 'Enter your name', required: true },
     { id: '2', type: 'email', label: 'Email', placeholder: 'Enter your email', required: true },
     { id: '3', type: 'phone', label: 'WhatsApp Number', placeholder: 'Enter your WhatsApp number', required: true }
   ]);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'custom'>('light');
-  const [customColors, setCustomColors] = useState({
+  const [theme, setTheme] = useState<'light' | 'dark' | 'custom'>(initialData?.theme || 'light');
+  const [customColors, setCustomColors] = useState(initialData?.customColors || {
     primary: '#25D366',
     background: '#ffffff',
     text: '#000000'
   });
   const [showColorPicker, setShowColorPicker] = useState<string | null>(null);
+
+  const handleSelectTemplate = (template: any) => {
+    setFormName(template.name);
+    setFormDescription(template.description);
+    setFields(template.fields);
+    setTheme(template.theme);
+    if (template.customColors) {
+      setCustomColors(template.customColors);
+    }
+    setShowTemplates(false);
+  };
 
   const handleDragEnd = (result: any) => {
     if (!result.destination) return;
@@ -75,18 +91,46 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave }) => {
     onSave({
       name: formName,
       description: formDescription,
+      redirectUrl,
       fields,
       theme,
       customColors
     });
   };
 
+  if (showTemplates) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Create Lead Page</h2>
+          <Button
+            variant="outline"
+            onClick={() => setShowTemplates(false)}
+          >
+            Start from Scratch
+          </Button>
+        </div>
+        <LeadPageTemplates onSelectTemplate={handleSelectTemplate} />
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div>
         <Card>
           <CardHeader>
-            <CardTitle>Form Designer</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Form Designer</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowTemplates(true)}
+                leftIcon={<ArrowLeft size={16} />}
+              >
+                Templates
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -102,6 +146,13 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave }) => {
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="Enter form description"
+                />
+                <Input
+                  label="Redirect URL (after submission)"
+                  value={redirectUrl}
+                  onChange={(e) => setRedirectUrl(e.target.value)}
+                  placeholder="https://yoursite.com/thank-you"
+                  helperText="Optional: URL to redirect users after form submission"
                 />
               </div>
 
@@ -197,6 +248,20 @@ const LeadPageDesigner: React.FC<LeadPageDesignerProps> = ({ onSave }) => {
                                   value={field.placeholder}
                                   onChange={(e) => updateField(field.id, { placeholder: e.target.value })}
                                 />
+                                {field.type === 'select' && (
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                      Options (comma separated)
+                                    </label>
+                                    <Input
+                                      value={field.options?.join(', ') || ''}
+                                      onChange={(e) => updateField(field.id, { 
+                                        options: e.target.value.split(',').map(opt => opt.trim()).filter(Boolean)
+                                      })}
+                                      placeholder="Option 1, Option 2, Option 3"
+                                    />
+                                  </div>
+                                )}
                                 <div className="flex items-center">
                                   <input
                                     type="checkbox"

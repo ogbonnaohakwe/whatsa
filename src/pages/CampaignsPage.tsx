@@ -1,12 +1,89 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
+import Input from '../components/ui/Input';
+import { Select, Textarea } from '../components/ui/FormElements';
 import { mockCampaigns } from '../mock/mockData';
 import { formatDate } from '../lib/utils';
-import { Plus, Send, Clock, CheckCircle, AlertCircle, BarChart, Copy, Eye, Edit, Trash } from 'lucide-react';
+import { Plus, Send, Clock, CheckCircle, AlertCircle, BarChart, Copy, Eye, Edit, Trash, Users, Calendar } from 'lucide-react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const CampaignsPage: React.FC = () => {
+  const [campaigns, setCampaigns] = useState(mockCampaigns);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newCampaign, setNewCampaign] = useState({
+    name: '',
+    message: '',
+    targetGroups: [] as string[],
+    scheduledFor: '',
+    type: 'immediate' as 'immediate' | 'scheduled'
+  });
+
+  const handleCreateCampaign = () => {
+    if (!newCampaign.name || !newCampaign.message) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const campaign = {
+      id: Date.now().toString(),
+      name: newCampaign.name,
+      message: newCampaign.message,
+      status: newCampaign.type === 'scheduled' ? 'scheduled' : 'draft',
+      targetGroups: newCampaign.targetGroups,
+      scheduledFor: newCampaign.scheduledFor ? new Date(newCampaign.scheduledFor) : undefined,
+      sentCount: 0,
+      deliveredCount: 0,
+      readCount: 0,
+      createdAt: new Date(),
+    };
+
+    setCampaigns([campaign, ...campaigns]);
+    setShowCreateModal(false);
+    setNewCampaign({
+      name: '',
+      message: '',
+      targetGroups: [],
+      scheduledFor: '',
+      type: 'immediate'
+    });
+    toast.success('Campaign created successfully!');
+  };
+
+  const handleSendCampaign = (campaignId: string) => {
+    setCampaigns(campaigns.map(campaign => 
+      campaign.id === campaignId 
+        ? { ...campaign, status: 'sending' }
+        : campaign
+    ));
+    toast.success('Campaign sent successfully!');
+  };
+
+  const handleDuplicateCampaign = (campaign: any) => {
+    const duplicated = {
+      ...campaign,
+      id: Date.now().toString(),
+      name: `${campaign.name} (Copy)`,
+      status: 'draft',
+      sentCount: 0,
+      deliveredCount: 0,
+      readCount: 0,
+      createdAt: new Date(),
+    };
+    setCampaigns([duplicated, ...campaigns]);
+    toast.success('Campaign duplicated successfully!');
+  };
+
+  const groupOptions = [
+    { value: '1', label: 'Friends' },
+    { value: '2', label: 'Work' },
+    { value: '3', label: 'Family' },
+    { value: '4', label: 'Leads' },
+    { value: '5', label: 'VIP Customers' }
+  ];
+
   return (
     <div className="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-8">
@@ -26,6 +103,7 @@ const CampaignsPage: React.FC = () => {
           <Button
             variant="primary"
             leftIcon={<Plus size={16} />}
+            onClick={() => setShowCreateModal(true)}
           >
             Create Campaign
           </Button>
@@ -67,7 +145,7 @@ const CampaignsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {mockCampaigns.map((campaign) => (
+                  {campaigns.map((campaign) => (
                     <tr key={campaign.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -84,6 +162,7 @@ const CampaignsPage: React.FC = () => {
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           campaign.status === 'completed' ? 'bg-success-100 text-success-800' : 
                           campaign.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          campaign.status === 'sending' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {campaign.status === 'completed' && <CheckCircle size={12} className="mr-1" />}
@@ -129,6 +208,16 @@ const CampaignsPage: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center space-x-2">
+                          {campaign.status === 'draft' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSendCampaign(campaign.id)}
+                              className="text-primary-600 hover:text-primary-900"
+                            >
+                              <Send size={16} />
+                            </Button>
+                          )}
                           {campaign.status === 'completed' && (
                             <button className="text-gray-600 hover:text-gray-900">
                               <BarChart size={18} />
@@ -142,7 +231,10 @@ const CampaignsPage: React.FC = () => {
                               <Edit size={18} />
                             </button>
                           )}
-                          <button className="text-gray-600 hover:text-gray-900">
+                          <button 
+                            className="text-gray-600 hover:text-gray-900"
+                            onClick={() => handleDuplicateCampaign(campaign)}
+                          >
                             <Copy size={18} />
                           </button>
                           <button className="text-error-500 hover:text-error-600">
@@ -158,6 +250,116 @@ const CampaignsPage: React.FC = () => {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Create Campaign Modal */}
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Create New Campaign"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <Input
+            label="Campaign Name"
+            value={newCampaign.name}
+            onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
+            placeholder="Enter campaign name"
+            required
+          />
+
+          <Textarea
+            label="Message"
+            value={newCampaign.message}
+            onChange={(e) => setNewCampaign({ ...newCampaign, message: e.target.value })}
+            placeholder="Enter your message here..."
+            rows={4}
+            required
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Target Groups
+            </label>
+            <div className="space-y-2">
+              {groupOptions.map((group) => (
+                <label key={group.value} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={newCampaign.targetGroups.includes(group.value)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setNewCampaign({
+                          ...newCampaign,
+                          targetGroups: [...newCampaign.targetGroups, group.value]
+                        });
+                      } else {
+                        setNewCampaign({
+                          ...newCampaign,
+                          targetGroups: newCampaign.targetGroups.filter(g => g !== group.value)
+                        });
+                      }
+                    }}
+                    className="h-4 w-4 text-primary-500 focus:ring-primary-500 border-gray-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-gray-700">{group.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Send Type
+            </label>
+            <div className="flex space-x-4">
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  checked={newCampaign.type === 'immediate'}
+                  onChange={() => setNewCampaign({ ...newCampaign, type: 'immediate' })}
+                  className="h-4 w-4 text-primary-500 focus:ring-primary-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Send Immediately</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="radio"
+                  checked={newCampaign.type === 'scheduled'}
+                  onChange={() => setNewCampaign({ ...newCampaign, type: 'scheduled' })}
+                  className="h-4 w-4 text-primary-500 focus:ring-primary-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Schedule for Later</span>
+              </label>
+            </div>
+          </div>
+
+          {newCampaign.type === 'scheduled' && (
+            <Input
+              type="datetime-local"
+              label="Schedule Date & Time"
+              value={newCampaign.scheduledFor}
+              onChange={(e) => setNewCampaign({ ...newCampaign, scheduledFor: e.target.value })}
+              min={new Date().toISOString().slice(0, 16)}
+              leftIcon={<Calendar size={16} />}
+            />
+          )}
+
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleCreateCampaign}
+            >
+              Create Campaign
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
         <motion.div
