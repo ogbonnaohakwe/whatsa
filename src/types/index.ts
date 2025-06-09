@@ -79,12 +79,16 @@ export interface OptinPage {
     primary: string;
     background: string;
     text: string;
+    accent?: string;
+    border?: string;
   };
   redirectUrl?: string;
   targetGroup?: string;
   createdAt: Date;
   visits: number;
   conversions: number;
+  formSettings?: FormSettings;
+  textFormatting?: TextFormatting;
 }
 
 export interface FormField {
@@ -94,6 +98,78 @@ export interface FormField {
   placeholder?: string;
   required: boolean;
   options?: string[];
+  validation?: {
+    minLength?: number;
+    maxLength?: number;
+    pattern?: string;
+    customMessage?: string;
+  };
+}
+
+export interface FormSettings {
+  submitButtonText: string;
+  successMessage: string;
+  errorMessage: string;
+  enableProgressBar: boolean;
+  enableFieldValidation: boolean;
+  enableAutoSave: boolean;
+  enableCaptcha: boolean;
+  enableAnalytics: boolean;
+  maxSubmissions: number;
+  enableScheduling: boolean;
+  startDate: string;
+  endDate: string;
+  enableGeoTargeting: boolean;
+  allowedCountries: string[];
+  enableDeviceTargeting: boolean;
+  allowedDevices: string[];
+  enableABTesting: boolean;
+  formWidth: 'small' | 'medium' | 'large' | 'full';
+  formAlignment: 'left' | 'center' | 'right';
+  enableShadow: boolean;
+  enableBorder: boolean;
+  borderRadius: 'none' | 'small' | 'medium' | 'large' | 'full';
+  enableAnimation: boolean;
+  animationType: 'fadeIn' | 'slideUp' | 'slideDown' | 'zoomIn';
+  enableTypography: boolean;
+  fontFamily: string;
+  fontSize: 'small' | 'medium' | 'large';
+  lineHeight: 'tight' | 'normal' | 'relaxed';
+  enableSpacing: boolean;
+  fieldSpacing: 'small' | 'medium' | 'large';
+  sectionSpacing: 'small' | 'medium' | 'large';
+}
+
+export interface TextFormatting {
+  headingStyle: {
+    fontSize: string;
+    fontWeight: string;
+    color: string;
+    alignment: 'left' | 'center' | 'right';
+    decoration: string;
+  };
+  descriptionStyle: {
+    fontSize: string;
+    fontWeight: string;
+    color: string;
+    alignment: 'left' | 'center' | 'right';
+    decoration: string;
+  };
+  labelStyle: {
+    fontSize: string;
+    fontWeight: string;
+    color: string;
+    alignment: 'left' | 'center' | 'right';
+    decoration: string;
+  };
+  buttonStyle: {
+    fontSize: string;
+    fontWeight: string;
+    color: string;
+    backgroundColor: string;
+    borderRadius: string;
+    padding: string;
+  };
 }
 
 export interface DashboardStats {
