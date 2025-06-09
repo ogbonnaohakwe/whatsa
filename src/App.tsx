@@ -82,7 +82,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={
           isAuthenticated ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate to="/dashboard\" replace />
           ) : (
             <PublicLayout>
               <HomePage />
