@@ -5,6 +5,7 @@ import Input from '../components/ui/Input';
 import { useAuthStore } from '../store/authStore';
 import { User, Lock, Mail, Phone, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
+import DatabaseSettings from '../components/settings/DatabaseSettings';
 
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -121,6 +122,14 @@ const SettingsPage: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
+          <DatabaseSettings />
         </motion.div>
 
         <motion.div

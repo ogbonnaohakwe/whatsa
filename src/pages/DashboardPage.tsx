@@ -6,6 +6,7 @@ import WhatsappConnect from '../components/dashboard/WhatsappConnect';
 import StatusUpdates from '../components/dashboard/StatusUpdates';
 import StatusUpdateForm from '../components/dashboard/StatusUpdateForm';
 import SubscriptionCard from '../components/dashboard/SubscriptionCard';
+import DatabaseStatus from '../components/dashboard/DatabaseStatus';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { mockDashboardStats, mockWeeklyMessageData, mockContacts } from '../mock/mockData';
 import { motion } from 'framer-motion';
@@ -56,6 +57,8 @@ const DashboardPage: React.FC = () => {
         </motion.div>
       </div>
 
+      <DatabaseStatus />
+      
       <WhatsappConnect />
 
       {isConnected && (
