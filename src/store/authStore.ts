@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { supabase } from '../lib/supabase';
+import { databaseService } from '../services/databaseService';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -20,9 +22,10 @@ interface AuthState {
   login: (email: string, password: string) => Promise<{ success: boolean; isAdmin: boolean }>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
+  initializeAuth: () => Promise<void>;
 }
 
-// Demo user accounts
+// Demo user accounts (fallback when no database)
 const demoUsers = [
   {
     id: '1',
@@ -39,20 +42,12 @@ const demoUsers = [
     name: 'Admin User',
     role: 'admin',
     profilePicture: 'https://images.pexels.com/photos/762020/pexels-photo-762020.jpeg?auto=compress&cs=tinysrgb&w=100'
-  },
-  {
-    id: '3',
-    email: 'business@whatsapp-autoresponder.com',
-    password: 'business123',
-    name: 'Business Owner',
-    role: 'user',
-    profilePicture: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100'
   }
 ];
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       token: null,
@@ -67,14 +62,83 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
+      initializeAuth: async () => {
+        if (!supabase) {
+          console.log('Running in demo mode - no auth initialization needed');
+          return;
+        }
+
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (session?.user) {
+            // Get user profile from database
+            try {
+              const userData = await databaseService.getUserById(session.user.id);
+              const user: User = {
+                id: userData.id,
+                email: userData.email,
+                name: userData.name,
+                profilePicture: userData.profile_picture || undefined,
+                role: 'user' // Default role, you can extend this
+              };
+              
+              set({ 
+                user,
+                isAuthenticated: true,
+                token: session.access_token,
+              });
+            } catch (error) {
+              console.error('Failed to load user profile:', error);
+              // Clear invalid session
+              await supabase.auth.signOut();
+            }
+          }
+        } catch (error) {
+          console.error('Auth initialization failed:', error);
+        }
+      },
+
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         
         try {
-          // Simulate API delay
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          // Check demo users
+          // Try Supabase auth first
+          if (supabase) {
+            const { data, error } = await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
+
+            if (error) {
+              // If Supabase auth fails, fall back to demo users
+              console.log('Supabase auth failed, trying demo users:', error.message);
+            } else if (data.user) {
+              // Get user profile from database
+              const userData = await databaseService.getUserById(data.user.id);
+              const user: User = {
+                id: userData.id,
+                email: userData.email,
+                name: userData.name,
+                profilePicture: userData.profile_picture || undefined,
+                role: 'user' // You can extend this based on your user table
+              };
+
+              const isAdmin = user.role === 'admin';
+              
+              set({ 
+                user,
+                isAuthenticated: true,
+                token: data.session?.access_token || null,
+                isLoading: false,
+              });
+              
+              toast.success(`Welcome back, ${user.name}!`);
+              return { success: true, isAdmin };
+            }
+          }
+
+          // Fallback to demo users
           const demoUser = demoUsers.find(u => u.email === email && u.password === password);
           
           if (demoUser) {
@@ -95,13 +159,12 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
             });
             
-            toast.success(`Welcome back, ${demoUser.name}!`);
+            toast.success(`Welcome back, ${demoUser.name}! (Demo Mode)`);
             return { success: true, isAdmin };
           } else {
-            // For non-demo accounts, show available demo accounts
             set({ 
               isLoading: false, 
-              error: 'Invalid credentials. Please use one of the demo accounts above.' 
+              error: 'Invalid credentials. Please check your email and password.' 
             });
             return { success: false, isAdmin: false };
           }
@@ -118,15 +181,54 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         
         try {
-          // Simulate API delay
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          
-          // Check if email already exists in demo users
+          // Try Supabase auth first
+          if (supabase) {
+            const { data, error } = await supabase.auth.signUp({
+              email,
+              password,
+              options: {
+                data: {
+                  name,
+                },
+              },
+            });
+
+            if (error) {
+              console.log('Supabase registration failed:', error.message);
+            } else if (data.user) {
+              // Create user profile in database
+              await databaseService.createUser({
+                id: data.user.id,
+                name,
+                email,
+                whatsapp_connected: false,
+              });
+
+              const user: User = {
+                id: data.user.id,
+                email,
+                name,
+                role: 'user',
+              };
+              
+              set({ 
+                user,
+                isAuthenticated: true,
+                token: data.session?.access_token || null,
+                isLoading: false,
+              });
+              
+              toast.success(`Welcome to WhatsApp Autoresponder, ${name}!`);
+              return true;
+            }
+          }
+
+          // Fallback to demo mode
           const existingUser = demoUsers.find(u => u.email === email);
           if (existingUser) {
             set({ 
               isLoading: false, 
-              error: 'Email already exists. Please use the login form with demo credentials.' 
+              error: 'Email already exists. Please use the login form.' 
             });
             return false;
           }
@@ -147,7 +249,7 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
           
-          toast.success(`Welcome to WhatsApp Autoresponder, ${name}!`);
+          toast.success(`Welcome to WhatsApp Autoresponder, ${name}! (Demo Mode)`);
           return true;
         } catch (error) {
           set({ 
@@ -160,6 +262,10 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try {
+          if (supabase) {
+            await supabase.auth.signOut();
+          }
+          
           set({ 
             user: null, 
             isAuthenticated: false, 

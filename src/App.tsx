@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
+import { initializeDatabase } from './lib/supabase';
 
 // Layout
 import Header from './components/layout/Header';
@@ -74,7 +75,17 @@ const PublicLayout = ({ children }: { children: React.ReactNode }) => (
 );
 
 function App() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, initializeAuth } = useAuthStore();
+
+  useEffect(() => {
+    // Initialize database connection and auth
+    const init = async () => {
+      await initializeDatabase();
+      await initializeAuth();
+    };
+    
+    init();
+  }, [initializeAuth]);
 
   return (
     <Router>
@@ -82,7 +93,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/" element={
           isAuthenticated ? (
-            <Navigate to="/dashboard\" replace />
+            <Navigate to="/dashboard" replace />
           ) : (
             <PublicLayout>
               <HomePage />
