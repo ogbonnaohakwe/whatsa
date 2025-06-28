@@ -1,5 +1,5 @@
-import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, User, Bell, LogOut, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../ui/Button';
@@ -7,8 +7,11 @@ import Button from '../ui/Button';
 const Header: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
-  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const [isProfileOpen, setIsProfileOpen] = React.useState(false);
+  const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleProfile = () => setIsProfileOpen(!isProfileOpen);
@@ -18,8 +21,38 @@ const Header: React.FC = () => {
     navigate('/login');
   };
 
+  useEffect(() => {
+    const isHomePage = location.pathname === '/';
+    
+    // Initially hide header on homepage
+    if (isHomePage) {
+      setShowHeader(false);
+    } else {
+      setShowHeader(true);
+    }
+
+    const handleScroll = () => {
+      const position = window.scrollY;
+      setScrollPosition(position);
+      
+      // Show header after scrolling down 100px on homepage
+      if (isHomePage) {
+        setShowHeader(position > 100);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [location.pathname]);
+
+  if (!showHeader) return null;
+
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className={`bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${
+      location.pathname === '/' && scrollPosition < 100 ? '-translate-y-full' : 'translate-y-0'
+    }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">

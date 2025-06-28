@@ -9,6 +9,7 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import DashboardLayout from './components/layout/DashboardLayout';
 import AdminLayout from './components/layout/AdminLayout';
+import PublicLayout from './components/layout/PublicLayout';
 
 // Public Pages
 import HomePage from './pages/HomePage';
@@ -65,15 +66,6 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <AdminLayout>{children}</AdminLayout>;
 };
 
-// Public Layout Component
-const PublicLayout = ({ children }: { children: React.ReactNode }) => (
-  <div className="flex flex-col min-h-screen">
-    <Header />
-    <main className="flex-grow">{children}</main>
-    <Footer />
-  </div>
-);
-
 function App() {
   const { isAuthenticated, user, initializeAuth } = useAuthStore();
 
@@ -95,9 +87,7 @@ function App() {
           isAuthenticated ? (
             <Navigate to="/dashboard" replace />
           ) : (
-            <PublicLayout>
-              <HomePage />
-            </PublicLayout>
+            <HomePage />
           )
         } />
         <Route path="/login" element={<LoginPage />} />

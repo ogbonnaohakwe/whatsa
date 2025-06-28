@@ -4,6 +4,7 @@ import FeaturesSection from '../components/home/FeaturesSection';
 import TestimonialSection from '../components/home/TestimonialSection';
 import CtaSection from '../components/home/CtaSection';
 import { motion } from 'framer-motion';
+import Footer from '../components/layout/Footer';
 
 const HomePage: React.FC = () => {
   const integrationPartners = [
@@ -132,6 +133,7 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+      <Footer />
     </div>
   );
 };
