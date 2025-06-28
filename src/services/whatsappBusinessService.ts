@@ -41,29 +41,41 @@ class WhatsAppBusinessService {
   private accessToken: string;
   private phoneNumberId: string;
   private webhookVerifyToken: string;
+  private backendUrl: string;
 
   constructor() {
     this.apiUrl = 'https://graph.facebook.com/v18.0';
     this.accessToken = import.meta.env.VITE_WHATSAPP_ACCESS_TOKEN || '';
     this.phoneNumberId = import.meta.env.VITE_WHATSAPP_PHONE_NUMBER_ID || '';
     this.webhookVerifyToken = import.meta.env.VITE_WHATSAPP_WEBHOOK_VERIFY_TOKEN || '';
+    this.backendUrl = import.meta.env.VITE_API_URL || '';
+  }
+
+  // Check if we're in demo mode
+  isDemoMode(): boolean {
+    return !this.accessToken || !this.phoneNumberId || !this.backendUrl;
   }
 
   // Initialize WhatsApp Business API
   async initialize(): Promise<boolean> {
-    try {
-      // Verify the phone number and access token
-      const response = await axios.get(
-        `${this.apiUrl}/${this.phoneNumberId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
-      );
-
-      console.log('WhatsApp Business API initialized:', response.data);
+    if (this.isDemoMode()) {
+      console.log('Running in demo mode - simulating WhatsApp connection');
+      // Simulate successful connection after a delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
       return true;
+    }
+
+    try {
+      // Check if our backend is configured properly
+      const response = await axios.get(`${this.backendUrl}/api/whatsapp/config`);
+      
+      if (response.data.configured) {
+        console.log('WhatsApp Business API initialized successfully');
+        return true;
+      } else {
+        console.error('WhatsApp Business API not configured properly');
+        return false;
+      }
     } catch (error) {
       console.error('Failed to initialize WhatsApp Business API:', error);
       return false;
@@ -72,32 +84,24 @@ class WhatsAppBusinessService {
 
   // Send a text message
   async sendTextMessage(to: string, message: string): Promise<string | null> {
-    try {
-      const payload: WhatsAppMessage = {
-        to: this.formatPhoneNumber(to),
-        type: 'text',
-        text: {
-          body: message,
-        },
-      };
+    if (this.isDemoMode()) {
+      console.log('Demo mode: Simulating sending message to', to);
+      // Simulate successful message sending
+      await new Promise(resolve => setTimeout(resolve, 800));
+      return `demo_msg_${Date.now()}`;
+    }
 
-      const response = await axios.post<WhatsAppResponse>(
-        `${this.apiUrl}/${this.phoneNumberId}/messages`,
+    try {
+      const response = await axios.post(
+        `${this.backendUrl}/api/whatsapp/send`,
         {
-          messaging_product: 'whatsapp',
-          ...payload,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json',
-          },
+          to: this.formatPhoneNumber(to),
+          message,
+          type: 'text'
         }
       );
 
-      const messageId = response.data.messages[0]?.id;
-      console.log('Message sent successfully:', messageId);
-      return messageId;
+      return response.data.messageId;
     } catch (error) {
       console.error('Failed to send WhatsApp message:', error);
       throw error;
@@ -106,33 +110,26 @@ class WhatsAppBusinessService {
 
   // Send an image message
   async sendImageMessage(to: string, imageUrl: string, caption?: string): Promise<string | null> {
-    try {
-      const payload: WhatsAppMessage = {
-        to: this.formatPhoneNumber(to),
-        type: 'image',
-        image: {
-          link: imageUrl,
-          caption,
-        },
-      };
+    if (this.isDemoMode()) {
+      console.log('Demo mode: Simulating sending image to', to);
+      // Simulate successful message sending
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return `demo_img_${Date.now()}`;
+    }
 
-      const response = await axios.post<WhatsAppResponse>(
-        `${this.apiUrl}/${this.phoneNumberId}/messages`,
+    try {
+      const response = await axios.post(
+        `${this.backendUrl}/api/whatsapp/send`,
         {
-          messaging_product: 'whatsapp',
-          ...payload,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json',
-          },
+          to: this.formatPhoneNumber(to),
+          message: caption || '',
+          mediaUrl: imageUrl,
+          type: 'image',
+          caption
         }
       );
 
-      const messageId = response.data.messages[0]?.id;
-      console.log('Image message sent successfully:', messageId);
-      return messageId;
+      return response.data.messageId;
     } catch (error) {
       console.error('Failed to send WhatsApp image:', error);
       throw error;
@@ -146,36 +143,25 @@ class WhatsAppBusinessService {
     languageCode: string = 'en_US',
     components?: any[]
   ): Promise<string | null> {
-    try {
-      const payload: WhatsAppMessage = {
-        to: this.formatPhoneNumber(to),
-        type: 'template',
-        template: {
-          name: templateName,
-          language: {
-            code: languageCode,
-          },
-          components,
-        },
-      };
+    if (this.isDemoMode()) {
+      console.log('Demo mode: Simulating sending template to', to);
+      // Simulate successful message sending
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return `demo_template_${Date.now()}`;
+    }
 
-      const response = await axios.post<WhatsAppResponse>(
-        `${this.apiUrl}/${this.phoneNumberId}/messages`,
+    try {
+      const response = await axios.post(
+        `${this.backendUrl}/api/whatsapp/send-template`,
         {
-          messaging_product: 'whatsapp',
-          ...payload,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json',
-          },
+          to: this.formatPhoneNumber(to),
+          templateName,
+          languageCode,
+          components
         }
       );
 
-      const messageId = response.data.messages[0]?.id;
-      console.log('Template message sent successfully:', messageId);
-      return messageId;
+      return response.data.messageId;
     } catch (error) {
       console.error('Failed to send WhatsApp template:', error);
       throw error;
@@ -184,192 +170,46 @@ class WhatsAppBusinessService {
 
   // Get message status
   async getMessageStatus(messageId: string): Promise<any> {
+    if (this.isDemoMode()) {
+      console.log('Demo mode: Simulating message status for', messageId);
+      // Simulate message status
+      return {
+        id: messageId,
+        status: 'delivered',
+        timestamp: new Date().toISOString()
+      };
+    }
+
     try {
       const response = await axios.get(
-        `${this.apiUrl}/${messageId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-          },
-        }
+        `${this.backendUrl}/api/whatsapp/status/${messageId}`
       );
 
-      return response.data;
+      return response.data.status;
     } catch (error) {
       console.error('Failed to get message status:', error);
       throw error;
     }
   }
 
-  // Upload media to WhatsApp
-  async uploadMedia(file: File, type: 'image' | 'document' | 'audio' | 'video'): Promise<string> {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', type);
-      formData.append('messaging_product', 'whatsapp');
-
-      const response = await axios.post(
-        `${this.apiUrl}/${this.phoneNumberId}/media`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      return response.data.id;
-    } catch (error) {
-      console.error('Failed to upload media:', error);
-      throw error;
-    }
-  }
-
   // Mark message as read
   async markMessageAsRead(messageId: string): Promise<boolean> {
+    if (this.isDemoMode()) {
+      console.log('Demo mode: Simulating marking message as read', messageId);
+      return true;
+    }
+
     try {
-      await axios.post(
-        `${this.apiUrl}/${this.phoneNumberId}/messages`,
-        {
-          messaging_product: 'whatsapp',
-          status: 'read',
-          message_id: messageId,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        }
+      const response = await axios.post(
+        `${this.backendUrl}/api/whatsapp/mark-read`,
+        { messageId }
       );
 
-      return true;
+      return response.data.success;
     } catch (error) {
       console.error('Failed to mark message as read:', error);
       return false;
     }
-  }
-
-  // Process incoming webhook
-  processWebhook(webhookData: any): void {
-    try {
-      const entry = webhookData.entry?.[0];
-      const changes = entry?.changes?.[0];
-      const value = changes?.value;
-
-      if (value?.messages) {
-        // Handle incoming messages
-        value.messages.forEach((message: any) => {
-          this.handleIncomingMessage(message, value.contacts?.[0]);
-        });
-      }
-
-      if (value?.statuses) {
-        // Handle message status updates
-        value.statuses.forEach((status: any) => {
-          this.handleMessageStatus(status);
-        });
-      }
-    } catch (error) {
-      console.error('Error processing webhook:', error);
-    }
-  }
-
-  // Handle incoming message
-  private handleIncomingMessage(message: any, contact: any): void {
-    const messageData = {
-      messageId: message.id,
-      from: message.from,
-      timestamp: message.timestamp,
-      type: message.type,
-      text: message.text?.body,
-      image: message.image,
-      document: message.document,
-      contact: {
-        name: contact?.profile?.name,
-        wa_id: contact?.wa_id,
-      },
-    };
-
-    console.log('Incoming WhatsApp message:', messageData);
-
-    // Emit to WebSocket for real-time updates
-    if (websocketService.isConnected()) {
-      window.dispatchEvent(
-        new CustomEvent('whatsapp_message_received', { detail: messageData })
-      );
-    }
-
-    // Process auto-responses
-    this.processAutoResponse(messageData);
-  }
-
-  // Handle message status updates
-  private handleMessageStatus(status: any): void {
-    const statusData = {
-      messageId: status.id,
-      status: status.status,
-      timestamp: status.timestamp,
-      recipient_id: status.recipient_id,
-    };
-
-    console.log('Message status update:', statusData);
-
-    // Emit to WebSocket for real-time updates
-    window.dispatchEvent(
-      new CustomEvent('whatsapp_message_status', { detail: statusData })
-    );
-  }
-
-  // Process auto-response
-  private async processAutoResponse(messageData: any): Promise<void> {
-    try {
-      // Get auto-responses from local storage or API
-      const autoResponses = this.getAutoResponses();
-      
-      for (const autoResponse of autoResponses) {
-        if (this.matchesTrigger(messageData.text, autoResponse.trigger)) {
-          await this.sendTextMessage(messageData.from, autoResponse.response);
-          break; // Send only the first matching response
-        }
-      }
-    } catch (error) {
-      console.error('Error processing auto-response:', error);
-    }
-  }
-
-  // Get auto-responses (you can integrate with your database)
-  private getAutoResponses(): Array<{ trigger: string; response: string; isActive: boolean }> {
-    // This would typically come from your database
-    return [
-      {
-        trigger: 'hello,hi,hey',
-        response: 'Hello! Thanks for reaching out. How can I help you today?',
-        isActive: true,
-      },
-      {
-        trigger: 'price,pricing,cost',
-        response: 'Our pricing starts at $29/month. Would you like to know more about our plans?',
-        isActive: true,
-      },
-      {
-        trigger: 'hours,open,business hours',
-        response: 'We\'re available Monday-Friday 9am to 5pm. How else can I assist you?',
-        isActive: true,
-      },
-    ];
-  }
-
-  // Check if message matches trigger
-  private matchesTrigger(message: string, trigger: string): boolean {
-    if (!message) return false;
-    
-    const triggers = trigger.toLowerCase().split(',').map(t => t.trim());
-    const messageText = message.toLowerCase();
-    
-    return triggers.some(t => messageText.includes(t));
   }
 
   // Format phone number for WhatsApp API
@@ -383,14 +223,6 @@ class WhatsAppBusinessService {
     }
     
     return cleaned;
-  }
-
-  // Verify webhook (for webhook setup)
-  verifyWebhook(mode: string, token: string, challenge: string): string | null {
-    if (mode === 'subscribe' && token === this.webhookVerifyToken) {
-      return challenge;
-    }
-    return null;
   }
 }
 

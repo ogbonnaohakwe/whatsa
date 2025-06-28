@@ -29,10 +29,16 @@ export const useWhatsAppBusiness = () => {
   const [isInitializing, setIsInitializing] = useState(false);
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [messageStatuses, setMessageStatuses] = useState<Record<string, MessageStatus>>({});
+  const [isWebSocketConnected, setIsWebSocketConnected] = useState(false);
 
   useEffect(() => {
     if (user) {
-      initializeWhatsApp();
+      // Check if we should auto-initialize
+      const shouldAutoInit = localStorage.getItem('whatsapp_auto_init') === 'true';
+      if (shouldAutoInit) {
+        initializeWhatsApp();
+      }
+      
       setupEventListeners();
     }
 
@@ -42,6 +48,8 @@ export const useWhatsAppBusiness = () => {
   }, [user]);
 
   const initializeWhatsApp = async () => {
+    if (!user) return false;
+    
     setIsInitializing(true);
     try {
       const success = await whatsappBusinessService.initialize();
@@ -49,18 +57,32 @@ export const useWhatsAppBusiness = () => {
       
       if (success) {
         toast.success('WhatsApp Business API connected successfully!');
+        localStorage.setItem('whatsapp_auto_init', 'true');
         
         // Initialize WebSocket connection
-        if (user) {
-          websocketService.initialize(user.id);
-        }
+        websocketService.initialize(user.id);
+        setIsWebSocketConnected(websocketService.isConnected());
+        
+        // Set up WebSocket connection status check
+        const wsCheckInterval = setInterval(() => {
+          setIsWebSocketConnected(websocketService.isConnected());
+        }, 5000);
+        
+        // Store cleanup function
+        window.whatsappCleanup = {
+          ...window.whatsappCleanup,
+          clearWsCheck: () => clearInterval(wsCheckInterval)
+        };
       } else {
         toast.error('Failed to connect to WhatsApp Business API');
       }
+      
+      return success;
     } catch (error) {
       console.error('WhatsApp initialization error:', error);
       toast.error('WhatsApp connection failed');
       setIsConnected(false);
+      return false;
     } finally {
       setIsInitializing(false);
     }
@@ -81,10 +103,17 @@ export const useWhatsAppBusiness = () => {
       }));
     });
 
+    // Listen for connection status changes
+    const unsubscribeConnection = websocketService.onConnectionStatus((statusData: any) => {
+      setIsConnected(statusData.connected);
+    });
+
     // Store cleanup functions
     window.whatsappCleanup = {
+      ...window.whatsappCleanup,
       unsubscribeMessages,
-      unsubscribeStatus
+      unsubscribeStatus,
+      unsubscribeConnection
     };
   };
 
@@ -92,7 +121,8 @@ export const useWhatsAppBusiness = () => {
     if (window.whatsappCleanup) {
       window.whatsappCleanup.unsubscribeMessages?.();
       window.whatsappCleanup.unsubscribeStatus?.();
-      delete window.whatsappCleanup;
+      window.whatsappCleanup.unsubscribeConnection?.();
+      window.whatsappCleanup.clearWsCheck?.();
     }
   };
 
@@ -181,6 +211,7 @@ export const useWhatsAppBusiness = () => {
     isInitializing,
     messages,
     messageStatuses,
+    isWebSocketConnected,
     
     // Actions
     sendTextMessage,
@@ -189,9 +220,6 @@ export const useWhatsAppBusiness = () => {
     markMessageAsRead,
     getMessageStatus,
     initializeWhatsApp,
-    
-    // Utilities
-    isWebSocketConnected: websocketService.isConnected(),
   };
 };
 
@@ -201,6 +229,8 @@ declare global {
     whatsappCleanup?: {
       unsubscribeMessages?: () => void;
       unsubscribeStatus?: () => void;
+      unsubscribeConnection?: () => void;
+      clearWsCheck?: () => void;
     };
   }
 }
