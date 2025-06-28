@@ -16,6 +16,9 @@ export const useSupabaseConnection = () => {
       
       if (supabaseUrl && supabaseKey) {
         try {
+          // Validate URL format before creating client
+          new URL(supabaseUrl);
+          
           const client = createClient<Database>(supabaseUrl, supabaseKey);
           const { error } = await client.from('users').select('count').limit(1);
           
@@ -44,6 +47,15 @@ export const useSupabaseConnection = () => {
     setIsLoading(true);
     
     try {
+      // Validate URL format
+      try {
+        new URL(url);
+      } catch (error) {
+        console.error('Invalid URL format:', error);
+        setIsLoading(false);
+        return false;
+      }
+      
       const client = createClient<Database>(url, key);
       const { error } = await client.from('users').select('count').limit(1);
       

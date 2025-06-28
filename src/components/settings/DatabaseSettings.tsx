@@ -25,6 +25,14 @@ const DatabaseSettings: React.FC = () => {
       return;
     }
     
+    // Validate URL format
+    try {
+      new URL(supabaseUrl);
+    } catch (error) {
+      toast.error('Invalid URL format. Please enter a valid URL.');
+      return;
+    }
+    
     setIsUpdating(true);
     try {
       const success = await connectToSupabase(supabaseUrl, supabaseKey);
