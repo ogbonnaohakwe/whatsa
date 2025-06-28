@@ -4,11 +4,15 @@ import type { Database } from '../types/supabase';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn('Missing Supabase environment variables. Using demo mode.');
-}
+// Check if we have valid credentials
+const hasValidCredentials = 
+  supabaseUrl && 
+  supabaseKey && 
+  supabaseUrl !== 'your_supabase_project_url' && 
+  supabaseKey !== 'your_supabase_anon_key';
 
-export const supabase = supabaseUrl && supabaseKey 
+// Only create client if we have valid credentials
+export const supabase = hasValidCredentials 
   ? createClient<Database>(supabaseUrl, supabaseKey, {
       auth: {
         autoRefreshToken: true,
