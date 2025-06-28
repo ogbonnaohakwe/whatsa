@@ -42,14 +42,6 @@ const demoUsers = [
     name: 'Admin User',
     role: 'admin',
     profilePicture: 'https://images.pexels.com/photos/762020/pexels-photo-762020.jpeg?auto=compress&cs=tinysrgb&w=100'
-  },
-  {
-    id: '3',
-    email: 'business@whatsapp-autoresponder.com',
-    password: 'business123',
-    name: 'Business Owner',
-    role: 'user',
-    profilePicture: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=100'
   }
 ];
 

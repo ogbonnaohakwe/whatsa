@@ -31,13 +31,6 @@ const LoginForm = () => {
       name: 'Admin User',
       role: 'admin',
       description: 'Admin account with full access'
-    },
-    {
-      email: 'business@whatsapp-autoresponder.com',
-      password: 'business123',
-      name: 'Business Owner',
-      role: 'user',
-      description: 'Business account with premium features'
     }
   ];
 

@@ -35,6 +35,7 @@ import LeadPagesPage from './pages/LeadPagesPage';
 import IntegrationsPage from './pages/IntegrationsPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import WorkflowPage from './pages/WorkflowPage';
 
 // Admin Pages
 import AdminLoginPage from './pages/admin/LoginPage';
@@ -141,6 +142,11 @@ function App() {
         <Route path="/settings" element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/workflow" element={
+          <ProtectedRoute>
+            <WorkflowPage />
           </ProtectedRoute>
         } />
 
