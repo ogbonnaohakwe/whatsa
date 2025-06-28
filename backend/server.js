@@ -33,6 +33,9 @@ const io = socketIo(server, {
   }
 });
 
+// Make io available to routes
+app.set('io', io);
+
 // Store connected users
 const connectedUsers = new Map();
 
@@ -47,37 +50,38 @@ io.on('connection', (socket) => {
   });
 
   socket.on('send_message', async (data) => {
-    const { contactId, message, userId } = data;
+    const { contactId, message, userId, type = 'text', mediaUrl, caption } = data;
     
     try {
-      // Here you would integrate with WhatsApp Business API
-      // For now, we'll simulate the message sending
-      console.log(`Sending message from ${userId} to ${contactId}: ${message}`);
+      const WhatsAppBusinessAPI = require('./services/whatsappBusinessAPI');
+      const whatsappAPI = new WhatsAppBusinessAPI();
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log(`Sending ${type} message from ${userId} to ${contactId}: ${message}`);
+      
+      let messageId;
+      
+      switch (type) {
+        case 'text':
+          messageId = await whatsappAPI.sendMessage(contactId, message);
+          break;
+        case 'image':
+          messageId = await whatsappAPI.sendImage(contactId, mediaUrl, caption);
+          break;
+        default:
+          throw new Error('Unsupported message type');
+      }
       
       // Emit success status
       socket.emit('message_status', {
-        messageId: 'msg_' + Date.now(),
+        messageId,
         status: 'sent',
         contactId,
         message,
-        timestamp: new Date()
+        timestamp: new Date().toISOString()
       });
       
-      // Simulate message delivery after 2 seconds
-      setTimeout(() => {
-        socket.emit('message_status', {
-          messageId: 'msg_' + Date.now(),
-          status: 'delivered',
-          contactId,
-          message,
-          timestamp: new Date()
-        });
-      }, 2000);
-      
     } catch (error) {
+      console.error('Send message error:', error);
       socket.emit('message_error', {
         error: error.message,
         contactId
@@ -93,145 +97,49 @@ io.on('connection', (socket) => {
   });
 });
 
-// API Routes
+// Routes
+const whatsappRoutes = require('./routes/whatsapp');
+const webhookRoutes = require('./routes/webhook');
+
+app.use('/api/whatsapp', whatsappRoutes);
+app.use('/webhook', webhookRoutes);
+
+// Health check
 app.get('/api/health', (req, res) => {
+  const WhatsAppBusinessAPI = require('./services/whatsappBusinessAPI');
+  const whatsappAPI = new WhatsAppBusinessAPI();
+  
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    connectedUsers: connectedUsers.size
+    connectedUsers: connectedUsers.size,
+    whatsappConfigured: whatsappAPI.isConfigured()
   });
 });
 
-// WhatsApp API endpoints
-app.post('/api/whatsapp/send', async (req, res) => {
-  try {
-    const { to, message, userId } = req.body;
-    
-    // Here you would integrate with WhatsApp Business API
-    // For now, we'll simulate the response
-    console.log(`API: Sending message from ${userId} to ${to}: ${message}`);
-    
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const messageId = 'msg_' + Date.now();
-    
-    res.json({
-      success: true,
-      messageId,
-      status: 'sent',
-      timestamp: new Date()
-    });
-    
-    // Notify connected user via WebSocket
-    const userSocketId = connectedUsers.get(userId);
-    if (userSocketId) {
-      io.to(userSocketId).emit('message_status', {
-        messageId,
-        status: 'sent',
-        contactId: to,
-        message,
-        timestamp: new Date()
-      });
-    }
-    
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-app.get('/api/whatsapp/status/:messageId', (req, res) => {
-  const { messageId } = req.params;
-  
-  // Simulate message status check
-  res.json({
-    messageId,
-    status: 'delivered',
-    timestamp: new Date()
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Server error:', error);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error'
   });
 });
-
-// Webhook endpoint for WhatsApp (this would be called by WhatsApp Business API)
-app.post('/webhook/whatsapp', (req, res) => {
-  try {
-    const { from, message, to, messageId } = req.body;
-    
-    console.log(`Webhook: Received message from ${from} to ${to}: ${message}`);
-    
-    // Find the user this message is for and notify them
-    const userSocketId = connectedUsers.get(to);
-    if (userSocketId) {
-      io.to(userSocketId).emit('message_received', {
-        messageId,
-        contactId: from,
-        message,
-        timestamp: new Date()
-      });
-    }
-    
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Webhook error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Auto-response processing
-app.post('/api/auto-response/process', async (req, res) => {
-  try {
-    const { message, contactId, userId } = req.body;
-    
-    // Here you would check auto-response rules and send automated replies
-    console.log(`Processing auto-response for message: ${message}`);
-    
-    // Simulate auto-response logic
-    const autoResponse = getAutoResponse(message);
-    
-    if (autoResponse) {
-      // Send auto-response
-      const userSocketId = connectedUsers.get(userId);
-      if (userSocketId) {
-        io.to(userSocketId).emit('message_status', {
-          messageId: 'auto_' + Date.now(),
-          status: 'sent',
-          contactId,
-          message: autoResponse,
-          isAutomated: true,
-          timestamp: new Date()
-        });
-      }
-    }
-    
-    res.json({ success: true, autoResponse });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Simple auto-response logic (you would make this more sophisticated)
-function getAutoResponse(message) {
-  const lowerMessage = message.toLowerCase();
-  
-  if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-    return "Hello! Thanks for reaching out. How can I help you today?";
-  }
-  
-  if (lowerMessage.includes('price') || lowerMessage.includes('cost')) {
-    return "Our pricing starts at $29/month. Would you like to know more about our plans?";
-  }
-  
-  if (lowerMessage.includes('hours') || lowerMessage.includes('open')) {
-    return "We're available Monday-Friday 9am to 5pm. How else can I assist you?";
-  }
-  
-  return null; // No auto-response
-}
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Frontend URL: ${process.env.FRONTEND_URL || "http://localhost:5173"}`);
+  
+  const WhatsAppBusinessAPI = require('./services/whatsappBusinessAPI');
+  const whatsappAPI = new WhatsAppBusinessAPI();
+  
+  if (whatsappAPI.isConfigured()) {
+    console.log('✅ WhatsApp Business API configured');
+  } else {
+    console.log('⚠️  WhatsApp Business API not configured - check environment variables');
+  }
 });
+
+// Export io for use in other modules
+module.exports = { app, server, io };
