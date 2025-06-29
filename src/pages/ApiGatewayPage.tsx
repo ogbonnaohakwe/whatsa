@@ -21,7 +21,8 @@ import {
   Settings,
   AlertTriangle,
   Server,
-  Database
+  Database,
+  Book
 } from 'lucide-react';
 import { useApiGateway } from '../hooks/useApiGateway';
 import toast from 'react-hot-toast';

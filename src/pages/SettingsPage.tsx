@@ -5,7 +5,7 @@ import Input from '../components/ui/Input';
 import { useAuthStore } from '../store/authStore';
 import { User, Lock, Mail, Phone, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
-import DatabaseSettings from '../components/settings/DatabaseSettings';
+import WhatsAppBusinessSettings from '../components/dashboard/WhatsAppBusinessSettings';
 
 const SettingsPage: React.FC = () => {
   const { user, logout } = useAuthStore();
@@ -129,43 +129,7 @@ const SettingsPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <DatabaseSettings />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-        >
-          <Card>
-            <CardHeader>
-              <CardTitle>WhatsApp Connection</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center p-4 bg-green-50 rounded-lg">
-                  <div className="flex-shrink-0 p-2 rounded-full bg-green-100">
-                    <Phone className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-sm font-medium text-green-800">WhatsApp Connected</h3>
-                    <p className="text-sm text-green-700">+1 (555) 123-4567</p>
-                  </div>
-                  <div className="ml-auto">
-                    <Button variant="outline" size="sm">
-                      Reconnect
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="pt-3">
-                  <Button variant="outline" className="text-gray-700">
-                    Disconnect WhatsApp
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <WhatsAppBusinessSettings />
         </motion.div>
 
         <motion.div
