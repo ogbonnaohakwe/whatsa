@@ -5,7 +5,7 @@ export const useSupabaseConnection = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Always connected in this version
+    // Always connected
     setIsConnected(true);
     setIsLoading(false);
   }, []);
@@ -21,7 +21,7 @@ export const useSupabaseConnection = () => {
       setIsLoading(false);
       return true;
     } catch (error) {
-      console.error('Failed to connect to Supabase:', error);
+      console.error('Failed to connect:', error);
       setIsConnected(false);
       setIsLoading(false);
       return false;

@@ -15,7 +15,7 @@ const DatabaseStatus: React.FC = () => {
         <CardHeader>
           <CardTitle className="flex items-center">
             <Database className="mr-2" size={20} />
-            Database Status
+            System Status
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -32,10 +32,10 @@ const DatabaseStatus: React.FC = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-green-900">
-                      Database Connected
+                      System Online
                     </h3>
                     <p className="text-green-700">
-                      Your database connection is active and working properly
+                      All systems are operational and working properly
                     </p>
                   </div>
                 </div>

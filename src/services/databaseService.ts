@@ -1,263 +1,157 @@
-import { supabase } from '../lib/supabase';
-import { Database } from '../types/supabase';
-
-type Tables = Database['public']['Tables'];
+import { Contact, ContactGroup, Message, AutoResponse, Campaign, StatusUpdate, OptinPage } from '../types';
+import { mockContacts, mockContactGroups, mockAutoResponses, mockCampaigns, mockOptinPages } from '../mock/mockData';
 
 export const databaseService = {
-  // Check if we're in demo mode
-  isDemoMode: () => !supabase,
-
   // Users
-  async createUser(userData: Partial<Tables['users']['Insert']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('users')
-      .insert([userData])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+  async createUser(userData: any) {
+    return { id: Date.now().toString(), ...userData };
   },
 
   async getUserById(id: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return { id, name: 'Test User', email: 'test@example.com' };
   },
 
   // Contacts
   async getContacts(userId: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('contacts')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    return mockContacts;
   },
 
-  async createContact(contactData: Partial<Tables['contacts']['Insert']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async createContact(contactData: Partial<Contact>) {
+    const newContact = {
+      id: Date.now().toString(),
+      name: contactData.name || '',
+      phoneNumber: contactData.phoneNumber || '',
+      email: contactData.email,
+      notes: contactData.notes,
+      groups: contactData.groups || [],
+      tags: contactData.tags || [],
+      createdAt: new Date(),
+      lastMessageAt: undefined
+    };
     
-    const { data, error } = await supabase
-      .from('contacts')
-      .insert([contactData])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return newContact;
   },
 
-  async updateContact(id: string, updates: Partial<Tables['contacts']['Update']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async updateContact(id: string, updates: Partial<Contact>) {
+    const contact = mockContacts.find(c => c.id === id);
+    if (!contact) throw new Error('Contact not found');
     
-    const { data, error } = await supabase
-      .from('contacts')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return { ...contact, ...updates };
   },
 
   async deleteContact(id: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { error } = await supabase
-      .from('contacts')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    // Simulate deletion
+    return;
   },
 
   // Auto Responses
   async getAutoResponses(userId: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('auto_responses')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    return mockAutoResponses;
   },
 
-  async createAutoResponse(responseData: Partial<Tables['auto_responses']['Insert']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async createAutoResponse(responseData: Partial<AutoResponse>) {
+    const newResponse = {
+      id: Date.now().toString(),
+      name: responseData.name || '',
+      trigger: responseData.trigger || '',
+      response: responseData.response || '',
+      isActive: responseData.isActive !== undefined ? responseData.isActive : true,
+      createdAt: new Date()
+    };
     
-    const { data, error } = await supabase
-      .from('auto_responses')
-      .insert([responseData])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return newResponse;
   },
 
-  async updateAutoResponse(id: string, updates: Partial<Tables['auto_responses']['Update']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async updateAutoResponse(id: string, updates: Partial<AutoResponse>) {
+    const response = mockAutoResponses.find(r => r.id === id);
+    if (!response) throw new Error('Auto response not found');
     
-    const { data, error } = await supabase
-      .from('auto_responses')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return { ...response, ...updates };
   },
 
   async deleteAutoResponse(id: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { error } = await supabase
-      .from('auto_responses')
-      .delete()
-      .eq('id', id);
-    
-    if (error) throw error;
+    // Simulate deletion
+    return;
   },
 
   // Campaigns
   async getCampaigns(userId: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('campaigns')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    return mockCampaigns;
   },
 
-  async createCampaign(campaignData: Partial<Tables['campaigns']['Insert']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async createCampaign(campaignData: Partial<Campaign>) {
+    const newCampaign = {
+      id: Date.now().toString(),
+      name: campaignData.name || '',
+      message: campaignData.message || '',
+      status: campaignData.status || 'draft',
+      targetGroups: campaignData.targetGroups || [],
+      scheduledFor: campaignData.scheduledFor,
+      sentCount: 0,
+      deliveredCount: 0,
+      readCount: 0,
+      createdAt: new Date()
+    };
     
-    const { data, error } = await supabase
-      .from('campaigns')
-      .insert([campaignData])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return newCampaign;
   },
 
-  async updateCampaign(id: string, updates: Partial<Tables['campaigns']['Update']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async updateCampaign(id: string, updates: Partial<Campaign>) {
+    const campaign = mockCampaigns.find(c => c.id === id);
+    if (!campaign) throw new Error('Campaign not found');
     
-    const { data, error } = await supabase
-      .from('campaigns')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return { ...campaign, ...updates };
   },
 
   // Lead Pages
   async getLeadPages(userId: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('lead_pages')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    return mockOptinPages;
   },
 
-  async createLeadPage(pageData: Partial<Tables['lead_pages']['Insert']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async createLeadPage(pageData: Partial<OptinPage>) {
+    const newPage = {
+      id: Date.now().toString(),
+      name: pageData.name || '',
+      description: pageData.description,
+      fields: pageData.fields || [],
+      theme: pageData.theme || 'light',
+      customColors: pageData.customColors,
+      targetGroup: pageData.targetGroup,
+      createdAt: new Date(),
+      visits: 0,
+      conversions: 0
+    };
     
-    const { data, error } = await supabase
-      .from('lead_pages')
-      .insert([pageData])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return newPage;
   },
 
   // Messages
   async getMessages(userId: string, contactId: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('contact_id', contactId)
-      .order('created_at', { ascending: true });
-    
-    if (error) throw error;
-    return data;
+    return [];
   },
 
-  async createMessage(messageData: Partial<Tables['messages']['Insert']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async createMessage(messageData: any) {
+    const newMessage = {
+      id: Date.now().toString(),
+      ...messageData,
+      createdAt: new Date()
+    };
     
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([messageData])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
+    return newMessage;
   },
 
   // Status Updates
   async getStatusUpdates(userId: string) {
-    if (!supabase) throw new Error('Database not available in demo mode');
-    
-    const { data, error } = await supabase
-      .from('status_updates')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    return data;
+    return [];
   },
 
-  async createStatusUpdate(updateData: Partial<Tables['status_updates']['Insert']>) {
-    if (!supabase) throw new Error('Database not available in demo mode');
+  async createStatusUpdate(updateData: any) {
+    const newUpdate = {
+      id: Date.now().toString(),
+      ...updateData,
+      createdAt: new Date()
+    };
     
-    const { data, error } = await supabase
-      .from('status_updates')
-      .insert([updateData])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
+    return newUpdate;
+  }
 };

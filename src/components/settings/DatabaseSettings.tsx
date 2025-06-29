@@ -9,7 +9,7 @@ const DatabaseSettings: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex items-center">
           <Database className="mr-2" size={20} />
-          Database Settings
+          System Settings
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -26,10 +26,10 @@ const DatabaseSettings: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold text-green-900">
-                    Connected to Database
+                    System Connected
                   </h3>
                   <p className="text-green-700">
-                    Your database connection is active and working properly
+                    Your system connection is active and working properly
                   </p>
                 </div>
               </div>
