@@ -13,7 +13,8 @@ import {
   X,
   Bell,
   Zap,
-  MessageSquare
+  MessageSquare,
+  Key
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
@@ -54,6 +55,7 @@ const DashboardLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     { to: '/lead-pages', icon: <FileText size={20} />, label: 'Lead Pages' },
     { to: '/workflow', icon: <Zap size={20} />, label: 'Workflow Builder' },
     { to: '/integrations', icon: <Puzzle size={20} />, label: 'Integrations' },
+    { to: '/api-gateway', icon: <Key size={20} />, label: 'API Gateway' },
     { to: '/settings', icon: <Settings size={20} />, label: 'Settings' },
   ];
 

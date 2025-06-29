@@ -32,6 +32,7 @@ import AutomationsPage from './pages/AutomationsPage';
 import CampaignsPage from './pages/CampaignsPage';
 import LeadPagesPage from './pages/LeadPagesPage';
 import IntegrationsPage from './pages/IntegrationsPage';
+import ApiGatewayPage from './pages/ApiGatewayPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import WorkflowPage from './pages/WorkflowPage';
@@ -73,6 +74,7 @@ function App() {
     // Initialize auth
     const init = async () => {
       try {
+        // Initialize auth
         await initializeAuth();
       } catch (error) {
         console.error('Initialization error:', error);
@@ -139,6 +141,11 @@ function App() {
         <Route path="/integrations" element={
           <ProtectedRoute>
             <IntegrationsPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/api-gateway" element={
+          <ProtectedRoute>
+            <ApiGatewayPage />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={

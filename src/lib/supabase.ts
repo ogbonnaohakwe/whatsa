@@ -1,52 +1,44 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../types/supabase';
-
-// Create a mock Supabase client that doesn't require actual credentials
-const createMockClient = () => {
-  return {
-    auth: {
-      getSession: async () => ({ data: { session: null } }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
-      signUp: async () => ({ data: { user: null, session: null }, error: null }),
-      signOut: async () => ({ error: null })
-    },
-    from: (table: string) => ({
-      select: () => ({
-        eq: () => ({
-          single: async () => ({ data: null, error: null }),
-          limit: async () => ({ data: [], error: null }),
-          order: () => ({ data: [], error: null }),
-          maybeSingle: async () => ({ data: null, error: null })
-        }),
+// This is a mock implementation that doesn't require actual Supabase credentials
+export const supabase = {
+  auth: {
+    getSession: async () => ({ data: { session: null } }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
+    signUp: async () => ({ data: { user: null, session: null }, error: null }),
+    signOut: async () => ({ error: null })
+  },
+  from: (table: string) => ({
+    select: () => ({
+      eq: () => ({
+        single: async () => ({ data: null, error: null }),
         limit: async () => ({ data: [], error: null }),
-        order: () => ({ data: [], error: null })
+        order: () => ({ data: [], error: null }),
+        maybeSingle: async () => ({ data: null, error: null })
       }),
-      insert: () => ({
+      limit: async () => ({ data: [], error: null }),
+      order: () => ({ data: [], error: null })
+    }),
+    insert: () => ({
+      select: () => ({
+        single: async () => ({ data: null, error: null })
+      })
+    }),
+    update: () => ({
+      eq: () => ({
         select: () => ({
           single: async () => ({ data: null, error: null })
         })
-      }),
-      update: () => ({
-        eq: () => ({
-          select: () => ({
-            single: async () => ({ data: null, error: null })
-          })
-        })
-      }),
-      delete: () => ({
-        eq: () => ({ error: null })
-      }),
-      upsert: () => ({ error: null })
+      })
     }),
-    functions: {
-      invoke: async () => ({ data: { session_url: 'https://example.com' } })
-    }
-  };
+    delete: () => ({
+      eq: () => ({ error: null })
+    }),
+    upsert: () => ({ error: null })
+  }),
+  functions: {
+    invoke: async () => ({ data: { session_url: 'https://example.com' } })
+  }
 };
-
-// Create a mock Supabase client
-export const supabase = createMockClient() as any;
 
 export const initializeDatabase = async () => {
   try {

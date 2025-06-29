@@ -18,8 +18,14 @@ import {
   Settings,
   Key,
   Webhook,
-  Link
+  Link,
+  RefreshCw,
+  Eye,
+  EyeOff,
+  Copy,
+  AlertTriangle
 } from 'lucide-react';
+import { useIntegrations } from '../hooks/useIntegrations';
 import toast from 'react-hot-toast';
 
 interface Integration {
@@ -39,7 +45,34 @@ interface Integration {
 }
 
 const IntegrationsPage: React.FC = () => {
-  const [integrations, setIntegrations] = useState<Integration[]>([
+  const { 
+    integrations, 
+    loading, 
+    connectIntegration, 
+    disconnectIntegration,
+    testIntegration,
+    syncIntegration
+  } = useIntegrations();
+
+  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
+  const [showSetupModal, setShowSetupModal] = useState(false);
+  const [setupData, setSetupData] = useState<Record<string, string>>({});
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [testing, setTesting] = useState<string | null>(null);
+
+  const categories = [
+    { id: 'all', label: 'All Integrations' },
+    { id: 'ecommerce', label: 'E-commerce' },
+    { id: 'crm', label: 'CRM' },
+    { id: 'automation', label: 'Automation' },
+    { id: 'marketing', label: 'Marketing' },
+    { id: 'analytics', label: 'Analytics' }
+  ];
+
+  const availableIntegrations: Integration[] = [
     {
       id: 'shopify',
       name: 'Shopify',
@@ -130,28 +163,20 @@ const IntegrationsPage: React.FC = () => {
         { name: 'applicationPassword', label: 'Application Password', type: 'password', placeholder: 'Your application password', required: true }
       ]
     }
-  ]);
-
-  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null);
-  const [showSetupModal, setShowSetupModal] = useState(false);
-  const [setupData, setSetupData] = useState<Record<string, string>>({});
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-
-  const categories = [
-    { id: 'all', label: 'All Integrations' },
-    { id: 'ecommerce', label: 'E-commerce' },
-    { id: 'crm', label: 'CRM' },
-    { id: 'automation', label: 'Automation' },
-    { id: 'marketing', label: 'Marketing' },
-    { id: 'analytics', label: 'Analytics' }
   ];
 
-  const filteredIntegrations = selectedCategory === 'all' 
-    ? integrations 
-    : integrations.filter(integration => integration.category === selectedCategory);
+  // Merge available integrations with connected ones
+  const allIntegrations = availableIntegrations.map(integration => {
+    const connectedIntegration = integrations.find(i => i.id === integration.id);
+    return connectedIntegration ? { ...integration, isConnected: true } : integration;
+  });
 
-  const connectedIntegrations = integrations.filter(i => i.isConnected);
-  const availableIntegrations = integrations.filter(i => !i.isConnected);
+  const filteredIntegrations = selectedCategory === 'all' 
+    ? allIntegrations 
+    : allIntegrations.filter(integration => integration.category === selectedCategory);
+
+  const connectedIntegrations = allIntegrations.filter(i => i.isConnected);
+  const availableIntegrationsFiltered = filteredIntegrations.filter(i => !i.isConnected);
 
   const handleConnect = (integration: Integration) => {
     if (integration.setupFields && integration.setupFields.length > 0) {
@@ -159,11 +184,24 @@ const IntegrationsPage: React.FC = () => {
       setSetupData({});
       setShowSetupModal(true);
     } else {
-      toggleConnection(integration.id);
+      handleQuickConnect(integration);
     }
   };
 
-  const handleSetupSubmit = () => {
+  const handleQuickConnect = async (integration: Integration) => {
+    const success = await connectIntegration({
+      id: integration.id,
+      name: integration.name,
+      type: 'api',
+      credentials: {}
+    });
+    
+    if (success) {
+      toast.success(`${integration.name} connected successfully!`);
+    }
+  };
+
+  const handleSetupSubmit = async () => {
     if (!selectedIntegration) return;
 
     // Validate required fields
@@ -176,25 +214,50 @@ const IntegrationsPage: React.FC = () => {
       return;
     }
 
-    // Simulate API call to connect integration
-    setTimeout(() => {
-      toggleConnection(selectedIntegration.id);
+    const success = await connectIntegration({
+      id: selectedIntegration.id,
+      name: selectedIntegration.name,
+      type: 'api',
+      credentials: setupData
+    });
+    
+    if (success) {
       setShowSetupModal(false);
       setSelectedIntegration(null);
-      toast.success(`${selectedIntegration.name} connected successfully!`);
-    }, 1000);
+    }
   };
 
-  const toggleConnection = (id: string) => {
-    setIntegrations(integrations.map(integration => 
-      integration.id === id 
-        ? { ...integration, isConnected: !integration.isConnected }
-        : integration
-    ));
+  const handleDisconnect = async (id: string) => {
+    if (window.confirm('Are you sure you want to disconnect this integration?')) {
+      await disconnectIntegration(id);
+    }
   };
 
-  const handleSettings = (integration: Integration) => {
-    toast.info(`${integration.name} settings coming soon!`);
+  const handleTestIntegration = async (id: string) => {
+    setTesting(id);
+    await testIntegration(id);
+    setTesting(null);
+  };
+
+  const handleSyncIntegration = async (id: string) => {
+    setSyncing(id);
+    await syncIntegration(id);
+    setSyncing(null);
+  };
+
+  const handleCopyToClipboard = async (text: string, id: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(id);
+      toast.success('Copied to clipboard!');
+      setTimeout(() => setCopied(null), 2000);
+    } catch (error) {
+      toast.error('Failed to copy to clipboard');
+    }
+  };
+
+  const toggleSecretVisibility = (id: string) => {
+    setShowSecrets(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -264,20 +327,34 @@ const IntegrationsPage: React.FC = () => {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleSettings(integration)}
+                            onClick={() => handleTestIntegration(integration.id)}
+                            isLoading={testing === integration.id}
                             className="text-gray-400 hover:text-gray-500"
                           >
-                            <Settings size={16} />
+                            <RefreshCw size={16} />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toggleConnection(integration.id)}
+                            onClick={() => handleDisconnect(integration.id)}
                             className="text-error-500 hover:text-error-600"
                           >
                             Disconnect
                           </Button>
                         </div>
+                      </div>
+                      
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          fullWidth
+                          onClick={() => handleSyncIntegration(integration.id)}
+                          isLoading={syncing === integration.id}
+                          leftIcon={<RefreshCw size={16} />}
+                        >
+                          Sync Data
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -300,7 +377,7 @@ const IntegrationsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredIntegrations.filter(i => !i.isConnected).map((integration, index) => (
+              {availableIntegrationsFiltered.map((integration, index) => (
                 <motion.div
                   key={integration.id}
                   initial={{ opacity: 0, y: 20 }}
@@ -365,16 +442,26 @@ const IntegrationsPage: React.FC = () => {
 
             <div className="space-y-4">
               {selectedIntegration.setupFields?.map((field) => (
-                <Input
-                  key={field.name}
-                  label={field.label}
-                  type={field.type}
-                  placeholder={field.placeholder}
-                  required={field.required}
-                  value={setupData[field.name] || ''}
-                  onChange={(e) => setSetupData({ ...setupData, [field.name]: e.target.value })}
-                  leftIcon={field.type === 'password' ? <Key size={16} /> : field.type === 'url' ? <Link size={16} /> : undefined}
-                />
+                <div key={field.name} className="relative">
+                  <Input
+                    label={field.label}
+                    type={field.type === 'password' && showSecrets[field.name] ? 'text' : field.type}
+                    placeholder={field.placeholder}
+                    required={field.required}
+                    value={setupData[field.name] || ''}
+                    onChange={(e) => setSetupData({ ...setupData, [field.name]: e.target.value })}
+                    leftIcon={field.type === 'password' ? <Key size={16} /> : field.type === 'url' ? <Link size={16} /> : undefined}
+                  />
+                  {field.type === 'password' && (
+                    <button
+                      type="button"
+                      className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+                      onClick={() => toggleSecretVisibility(field.name)}
+                    >
+                      {showSecrets[field.name] ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
 
