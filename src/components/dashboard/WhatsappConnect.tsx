@@ -16,7 +16,10 @@ const WhatsappConnect: React.FC = () => {
   useEffect(() => {
     // Auto-initialize on component mount
     if (!isConnected && !isInitializing) {
-      initializeWhatsApp();
+      const shouldAutoInit = localStorage.getItem('whatsapp_auto_init') === 'true';
+      if (shouldAutoInit) {
+        initializeWhatsApp();
+      }
     }
   }, []);
 
