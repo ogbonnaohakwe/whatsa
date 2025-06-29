@@ -3,12 +3,12 @@ import Button from './Button';
 import { Database, CheckCircle } from 'lucide-react';
 
 interface ConnectSupabaseButtonProps {
-  onConnect: (url: string, key: string) => Promise<boolean>;
-  isConnected: boolean;
+  onConnect?: (url: string, key: string) => Promise<boolean>;
+  isConnected?: boolean;
 }
 
 const ConnectSupabaseButton: React.FC<ConnectSupabaseButtonProps> = ({ 
-  isConnected 
+  isConnected = true
 }) => {
   if (isConnected) {
     return (

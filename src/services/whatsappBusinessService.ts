@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 class WhatsAppBusinessService {
   // Initialize WhatsApp Business API
   async initialize(): Promise<boolean> {

@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './store/authStore';
-import { initializeDatabase } from './lib/supabase';
 
 // Layout
 import Header from './components/layout/Header';
@@ -71,13 +70,9 @@ function App() {
   const { isAuthenticated, user, initializeAuth } = useAuthStore();
 
   useEffect(() => {
-    // Initialize database connection and auth
+    // Initialize auth
     const init = async () => {
       try {
-        // Initialize database
-        await initializeDatabase();
-        
-        // Initialize auth
         await initializeAuth();
       } catch (error) {
         console.error('Initialization error:', error);

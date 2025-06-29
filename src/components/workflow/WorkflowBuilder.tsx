@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../ui/Card';
 import Button from '../ui/Button';
 import { 
@@ -25,10 +25,13 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
-  Edit
+  Edit,
+  Move
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import Input from '../ui/Input';
+import { Textarea } from '../ui/FormElements';
 
 type NodeType = 'trigger' | 'condition' | 'action' | 'delay';
 
@@ -124,6 +127,16 @@ const WorkflowBuilder: React.FC = () => {
   const [showNewWorkflowForm, setShowNewWorkflowForm] = useState(false);
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(null);
   const [nodeConfigOpen, setNodeConfigOpen] = useState(false);
+  const [draggedNode, setDraggedNode] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const workflowCanvasRef = useRef<HTMLDivElement>(null);
+  const [isDrawingConnection, setIsDrawingConnection] = useState(false);
+  const [connectionStart, setConnectionStart] = useState<string | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isDraggingCanvas, setIsDraggingCanvas] = useState(false);
+  const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+  const [canvasScale, setCanvasScale] = useState(1);
+  const [lastMousePosition, setLastMousePosition] = useState({ x: 0, y: 0 });
 
   // Sample workflow data
   const sampleWorkflowData: Workflow = {
@@ -192,6 +205,60 @@ const WorkflowBuilder: React.FC = () => {
     updatedAt: new Date('2025-03-10')
   };
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (workflowCanvasRef.current && (draggedNode || isDrawingConnection || isDraggingCanvas)) {
+        const rect = workflowCanvasRef.current.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / canvasScale;
+        const y = (e.clientY - rect.top) / canvasScale;
+        
+        setMousePosition({ x, y });
+        
+        if (draggedNode && activeWorkflow) {
+          const nodeIndex = activeWorkflow.nodes.findIndex(node => node.id === draggedNode);
+          if (nodeIndex !== -1) {
+            const updatedNodes = [...activeWorkflow.nodes];
+            updatedNodes[nodeIndex] = {
+              ...updatedNodes[nodeIndex],
+              position: {
+                x: x - dragOffset.x,
+                y: y - dragOffset.y
+              }
+            };
+            setActiveWorkflow({
+              ...activeWorkflow,
+              nodes: updatedNodes
+            });
+          }
+        }
+        
+        if (isDraggingCanvas) {
+          const dx = e.clientX - lastMousePosition.x;
+          const dy = e.clientY - lastMousePosition.y;
+          setCanvasOffset({
+            x: canvasOffset.x + dx / canvasScale,
+            y: canvasOffset.y + dy / canvasScale
+          });
+          setLastMousePosition({ x: e.clientX, y: e.clientY });
+        }
+      }
+    };
+    
+    const handleMouseUp = () => {
+      setDraggedNode(null);
+      setIsDrawingConnection(false);
+      setIsDraggingCanvas(false);
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggedNode, dragOffset, activeWorkflow, isDrawingConnection, isDraggingCanvas, canvasOffset, canvasScale, lastMousePosition]);
+
   const handleCreateWorkflow = () => {
     if (!newWorkflowName) {
       toast.error('Please enter a workflow name');
@@ -237,11 +304,40 @@ const WorkflowBuilder: React.FC = () => {
   };
 
   const handleSelectTemplate = (template: any) => {
+    if (!activeWorkflow) return;
+    
+    const newNode: WorkflowNode = {
+      id: `node${Date.now()}`,
+      type: templateType,
+      title: template.title,
+      description: template.description,
+      config: {},
+      position: { 
+        x: 250, 
+        y: activeWorkflow.nodes.length > 0 
+          ? Math.max(...activeWorkflow.nodes.map(n => n.position.y)) + 150 
+          : 100 
+      }
+    };
+    
+    setActiveWorkflow({
+      ...activeWorkflow,
+      nodes: [...activeWorkflow.nodes, newNode]
+    });
+    
     toast.success(`Added ${template.title} node to workflow`);
     setShowTemplates(false);
   };
 
   const handleSaveWorkflow = () => {
+    if (!activeWorkflow) return;
+    
+    setWorkflows(workflows.map(w => 
+      w.id === activeWorkflow.id 
+        ? { ...w, name: activeWorkflow.name, description: activeWorkflow.description, updatedAt: new Date() } 
+        : w
+    ));
+    
     toast.success('Workflow saved successfully!');
   };
 
@@ -254,9 +350,126 @@ const WorkflowBuilder: React.FC = () => {
     setShowWorkflowList(true);
   };
 
-  const handleNodeClick = (node: WorkflowNode) => {
+  const handleNodeClick = (node: WorkflowNode, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedNode(node);
     setNodeConfigOpen(true);
+  };
+  
+  const handleNodeMouseDown = (nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (e.button === 0) { // Left mouse button
+      const node = activeWorkflow?.nodes.find(n => n.id === nodeId);
+      if (node) {
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setDragOffset({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top
+        });
+        setDraggedNode(nodeId);
+      }
+    }
+  };
+  
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0 && !draggedNode && !isDrawingConnection) { // Left mouse button
+      setIsDraggingCanvas(true);
+      setLastMousePosition({ x: e.clientX, y: e.clientY });
+    }
+  };
+  
+  const handleConnectionStart = (nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setConnectionStart(nodeId);
+    setIsDrawingConnection(true);
+  };
+  
+  const handleConnectionEnd = (nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isDrawingConnection && connectionStart && nodeId !== connectionStart) {
+      if (activeWorkflow) {
+        const newConnection: Connection = {
+          id: `conn${Date.now()}`,
+          source: connectionStart,
+          target: nodeId
+        };
+        
+        setActiveWorkflow({
+          ...activeWorkflow,
+          connections: [...activeWorkflow.connections, newConnection]
+        });
+        
+        toast.success('Connection created');
+      }
+    }
+    
+    setIsDrawingConnection(false);
+    setConnectionStart(null);
+  };
+  
+  const handleDeleteNode = (nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!activeWorkflow) return;
+    
+    const updatedNodes = activeWorkflow.nodes.filter(node => node.id !== nodeId);
+    const updatedConnections = activeWorkflow.connections.filter(
+      conn => conn.source !== nodeId && conn.target !== nodeId
+    );
+    
+    setActiveWorkflow({
+      ...activeWorkflow,
+      nodes: updatedNodes,
+      connections: updatedConnections
+    });
+    
+    if (selectedNode?.id === nodeId) {
+      setSelectedNode(null);
+      setNodeConfigOpen(false);
+    }
+    
+    toast.success('Node deleted');
+  };
+  
+  const handleDeleteConnection = (connectionId: string) => {
+    if (!activeWorkflow) return;
+    
+    setActiveWorkflow({
+      ...activeWorkflow,
+      connections: activeWorkflow.connections.filter(conn => conn.id !== connectionId)
+    });
+    
+    toast.success('Connection deleted');
+  };
+  
+  const handleDuplicateNode = (nodeId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!activeWorkflow) return;
+    
+    const nodeToDuplicate = activeWorkflow.nodes.find(node => node.id === nodeId);
+    if (!nodeToDuplicate) return;
+    
+    const newNode: WorkflowNode = {
+      ...nodeToDuplicate,
+      id: `node${Date.now()}`,
+      position: {
+        x: nodeToDuplicate.position.x + 50,
+        y: nodeToDuplicate.position.y + 50
+      }
+    };
+    
+    setActiveWorkflow({
+      ...activeWorkflow,
+      nodes: [...activeWorkflow.nodes, newNode]
+    });
+    
+    toast.success('Node duplicated');
+  };
+  
+  const handleCanvasWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.min(Math.max(canvasScale * delta, 0.5), 2);
+    setCanvasScale(newScale);
   };
 
   const getTemplates = () => {
@@ -287,6 +500,55 @@ const WorkflowBuilder: React.FC = () => {
       default:
         return <Settings size={20} />;
     }
+  };
+
+  const updateNodeConfig = (key: string, value: any) => {
+    if (!selectedNode || !activeWorkflow) return;
+    
+    const updatedNodes = activeWorkflow.nodes.map(node => 
+      node.id === selectedNode.id 
+        ? { 
+            ...node, 
+            config: { 
+              ...node.config, 
+              [key]: value 
+            } 
+          } 
+        : node
+    );
+    
+    setActiveWorkflow({
+      ...activeWorkflow,
+      nodes: updatedNodes
+    });
+    
+    setSelectedNode({
+      ...selectedNode,
+      config: {
+        ...selectedNode.config,
+        [key]: value
+      }
+    });
+  };
+  
+  const updateNodeTitle = (title: string) => {
+    if (!selectedNode || !activeWorkflow) return;
+    
+    const updatedNodes = activeWorkflow.nodes.map(node => 
+      node.id === selectedNode.id 
+        ? { ...node, title } 
+        : node
+    );
+    
+    setActiveWorkflow({
+      ...activeWorkflow,
+      nodes: updatedNodes
+    });
+    
+    setSelectedNode({
+      ...selectedNode,
+      title
+    });
   };
 
   return (
@@ -543,7 +805,14 @@ const WorkflowBuilder: React.FC = () => {
                           </div>
                           <h3 className="text-lg font-semibold mb-2">{template.title}</h3>
                           <p className="text-gray-600 mb-4 flex-grow">{template.description}</p>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setActiveWorkflow(sampleWorkflowData);
+                              setShowWorkflowList(false);
+                            }}
+                          >
                             Use Template
                           </Button>
                         </CardContent>
@@ -618,114 +887,246 @@ const WorkflowBuilder: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 min-h-[500px] relative">
-                {activeWorkflow?.nodes.map((node, index) => (
-                  <div 
-                    key={node.id}
-                    className="absolute"
-                    style={{ 
-                      left: `${node.position.x}px`, 
-                      top: `${node.position.y}px`,
-                      zIndex: selectedNode?.id === node.id ? 10 : 1
-                    }}
-                  >
+              <div 
+                className="bg-gray-50 border border-gray-200 rounded-lg p-6 min-h-[500px] relative overflow-hidden"
+                ref={workflowCanvasRef}
+                onMouseDown={handleCanvasMouseDown}
+                onWheel={handleCanvasWheel}
+                style={{ cursor: isDraggingCanvas ? 'grabbing' : 'grab' }}
+              >
+                <div 
+                  className="absolute inset-0 transition-transform"
+                  style={{ 
+                    transform: `scale(${canvasScale}) translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
+                    transformOrigin: '0 0'
+                  }}
+                >
+                  {activeWorkflow?.nodes.map((node) => (
                     <div 
-                      className={`bg-white rounded-lg shadow-md p-4 w-64 cursor-pointer border-2 ${
-                        selectedNode?.id === node.id ? 'border-primary-500' : 'border-transparent'
-                      }`}
-                      onClick={() => handleNodeClick(node)}
+                      key={node.id}
+                      className="absolute"
+                      style={{ 
+                        left: `${node.position.x}px`, 
+                        top: `${node.position.y}px`,
+                        zIndex: selectedNode?.id === node.id ? 10 : 1
+                      }}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center">
-                          {getNodeIcon(node.type)}
-                          <h3 className="ml-2 font-medium">{node.title}</h3>
+                      <div 
+                        className={`bg-white rounded-lg shadow-md p-4 w-64 cursor-pointer border-2 ${
+                          selectedNode?.id === node.id ? 'border-primary-500' : 'border-transparent'
+                        }`}
+                        onClick={(e) => handleNodeClick(node, e)}
+                        onMouseDown={(e) => handleNodeMouseDown(node.id, e)}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center">
+                            {getNodeIcon(node.type)}
+                            <h3 className="ml-2 font-medium">{node.title}</h3>
+                          </div>
+                          <div className="flex space-x-1">
+                            <button 
+                              className="text-gray-400 hover:text-gray-600"
+                              onClick={(e) => handleDuplicateNode(node.id, e)}
+                            >
+                              <Copy size={14} />
+                            </button>
+                            <button 
+                              className="text-red-400 hover:text-red-600"
+                              onClick={(e) => handleDeleteNode(node.id, e)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex space-x-1">
-                          <button className="text-gray-400 hover:text-gray-600">
-                            <Copy size={14} />
-                          </button>
-                          <button className="text-gray-400 hover:text-gray-600">
-                            <Edit size={14} />
-                          </button>
-                          <button className="text-red-400 hover:text-red-600">
-                            <Trash2 size={14} />
-                          </button>
+                        <p className="text-xs text-gray-500">{node.description}</p>
+                        
+                        {/* Show some config details if available */}
+                        {Object.keys(node.config).length > 0 && (
+                          <div className="mt-2 pt-2 border-t border-gray-100">
+                            {node.type === 'action' && node.config.message && (
+                              <div className="text-xs text-gray-600 truncate">
+                                Message: "{node.config.message.substring(0, 30)}..."
+                              </div>
+                            )}
+                            {node.type === 'delay' && node.config.delay && (
+                              <div className="text-xs text-gray-600">
+                                Delay: {Math.floor(node.config.delay / 3600)} hours
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Connection points */}
+                        <div 
+                          className="absolute top-1/2 -right-3 w-6 h-6 bg-blue-500 rounded-full transform -translate-y-1/2 cursor-pointer z-20"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            handleConnectionStart(node.id, e);
+                          }}
+                        >
+                          <ArrowRight size={16} className="text-white m-auto h-full" />
+                        </div>
+                        
+                        <div 
+                          className="absolute top-1/2 -left-3 w-6 h-6 bg-blue-500 rounded-full transform -translate-y-1/2 cursor-pointer z-20"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                          }}
+                          onMouseUp={(e) => {
+                            if (isDrawingConnection) {
+                              handleConnectionEnd(node.id, e);
+                            }
+                          }}
+                        >
+                          <ArrowRight size={16} className="text-white m-auto h-full transform rotate-180" />
                         </div>
                       </div>
-                      <p className="text-xs text-gray-500">{node.description}</p>
-                      
-                      {/* Show some config details if available */}
-                      {Object.keys(node.config).length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-gray-100">
-                          {node.type === 'action' && node.config.message && (
-                            <div className="text-xs text-gray-600 truncate">
-                              Message: "{node.config.message.substring(0, 30)}..."
-                            </div>
-                          )}
-                          {node.type === 'delay' && node.config.delay && (
-                            <div className="text-xs text-gray-600">
-                              Delay: {Math.floor(node.config.delay / 3600)} hours
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {/* Connection lines would go here in a real implementation */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <svg width="100%" height="100%">
+                  {/* Connection lines */}
+                  <svg className="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%' }}>
                     {activeWorkflow?.connections.map(connection => {
-                      // In a real implementation, we would calculate the actual path
-                      // based on the positions of the connected nodes
                       const sourceNode = activeWorkflow.nodes.find(n => n.id === connection.source);
                       const targetNode = activeWorkflow.nodes.find(n => n.id === connection.target);
                       
                       if (!sourceNode || !targetNode) return null;
                       
-                      // Simple straight line for demo purposes
-                      const sourceX = sourceNode.position.x + 128; // half of node width
-                      const sourceY = sourceNode.position.y + 40; // approximate bottom of node
-                      const targetX = targetNode.position.x + 128; // half of node width
-                      const targetY = targetNode.position.y; // top of node
+                      const sourceX = sourceNode.position.x + 264; // right side of node
+                      const sourceY = sourceNode.position.y + 40; // middle of node
+                      const targetX = targetNode.position.x; // left side of node
+                      const targetY = targetNode.position.y + 40; // middle of node
+                      
+                      // Create a curved path
+                      const dx = targetX - sourceX;
+                      const dy = targetY - sourceY;
+                      const controlPointX = sourceX + dx / 2;
+                      
+                      const path = `M${sourceX},${sourceY} C${controlPointX},${sourceY} ${controlPointX},${targetY} ${targetX},${targetY}`;
                       
                       return (
                         <g key={connection.id}>
                           <path
-                            d={`M${sourceX},${sourceY} L${targetX},${targetY}`}
+                            d={path}
                             stroke="#9CA3AF"
                             strokeWidth="2"
                             fill="none"
-                            strokeDasharray="4 4"
+                            markerEnd="url(#arrowhead)"
                           />
-                          <polygon
-                            points={`${targetX},${targetY} ${targetX-5},${targetY-10} ${targetX+5},${targetY-10}`}
-                            fill="#9CA3AF"
+                          <circle 
+                            cx={sourceX} 
+                            cy={sourceY} 
+                            r="4" 
+                            fill="#9CA3AF" 
                           />
+                          <circle 
+                            cx={targetX} 
+                            cy={targetY} 
+                            r="4" 
+                            fill="#9CA3AF" 
+                          />
+                          {/* Delete connection button */}
+                          <g
+                            transform={`translate(${controlPointX - 8}, ${(sourceY + targetY) / 2 - 8})`}
+                            className="cursor-pointer"
+                            onClick={() => handleDeleteConnection(connection.id)}
+                          >
+                            <circle cx="8" cy="8" r="8" fill="white" stroke="#9CA3AF" />
+                            <line x1="5" y1="5" x2="11" y2="11" stroke="#9CA3AF" strokeWidth="2" />
+                            <line x1="11" y1="5" x2="5" y2="11" stroke="#9CA3AF" strokeWidth="2" />
+                          </g>
                         </g>
                       );
                     })}
-                  </svg>
-                </div>
-
-                {/* Empty state */}
-                {activeWorkflow?.nodes.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-center">
-                      <Zap size={48} className="mx-auto text-gray-300 mb-4" />
-                      <h3 className="text-lg font-medium text-gray-500 mb-2">Start Building Your Workflow</h3>
-                      <p className="text-sm text-gray-400 mb-4">Add a trigger to start your workflow</p>
-                      <Button
-                        variant="outline"
-                        leftIcon={<Plus size={16} />}
-                        onClick={() => handleAddNode('trigger')}
+                    
+                    {/* Drawing connection line */}
+                    {isDrawingConnection && connectionStart && activeWorkflow && (
+                      (() => {
+                        const sourceNode = activeWorkflow.nodes.find(n => n.id === connectionStart);
+                        if (!sourceNode) return null;
+                        
+                        const sourceX = sourceNode.position.x + 264; // right side of node
+                        const sourceY = sourceNode.position.y + 40; // middle of node
+                        
+                        // Create a path to the mouse position
+                        const path = `M${sourceX},${sourceY} L${mousePosition.x},${mousePosition.y}`;
+                        
+                        return (
+                          <path
+                            d={path}
+                            stroke="#9CA3AF"
+                            strokeWidth="2"
+                            strokeDasharray="5,5"
+                            fill="none"
+                          />
+                        );
+                      })()
+                    )}
+                    
+                    {/* Arrowhead marker definition */}
+                    <defs>
+                      <marker
+                        id="arrowhead"
+                        markerWidth="10"
+                        markerHeight="7"
+                        refX="9"
+                        refY="3.5"
+                        orient="auto"
                       >
-                        Add Trigger
-                      </Button>
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#9CA3AF" />
+                      </marker>
+                    </defs>
+                  </svg>
+
+                  {/* Empty state */}
+                  {activeWorkflow?.nodes.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <Zap size={48} className="mx-auto text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-500 mb-2">Start Building Your Workflow</h3>
+                        <p className="text-sm text-gray-400 mb-4">Add a trigger to start your workflow</p>
+                        <Button
+                          variant="outline"
+                          leftIcon={<Plus size={16} />}
+                          onClick={() => handleAddNode('trigger')}
+                        >
+                          Add Trigger
+                        </Button>
+                      </div>
                     </div>
+                  )}
+                </div>
+                
+                {/* Zoom controls */}
+                <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-md p-2 flex space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCanvasScale(Math.min(canvasScale + 0.1, 2))}
+                  >
+                    +
+                  </Button>
+                  <div className="px-2 py-1 text-sm">
+                    {Math.round(canvasScale * 100)}%
                   </div>
-                )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCanvasScale(Math.max(canvasScale - 0.1, 0.5))}
+                  >
+                    -
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setCanvasScale(1);
+                      setCanvasOffset({ x: 0, y: 0 });
+                    }}
+                  >
+                    Reset
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -763,6 +1164,7 @@ const WorkflowBuilder: React.FC = () => {
                         <input
                           type="text"
                           value={selectedNode.title}
+                          onChange={(e) => updateNodeTitle(e.target.value)}
                           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                         />
                       </div>
@@ -775,6 +1177,8 @@ const WorkflowBuilder: React.FC = () => {
                           <input
                             type="text"
                             placeholder="hello, hi, hey"
+                            value={selectedNode.config.keywords || ''}
+                            onChange={(e) => updateNodeConfig('keywords', e.target.value)}
                             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                           />
                         </div>
@@ -787,6 +1191,7 @@ const WorkflowBuilder: React.FC = () => {
                           </label>
                           <textarea
                             value={selectedNode.config.message || ''}
+                            onChange={(e) => updateNodeConfig('message', e.target.value)}
                             rows={4}
                             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                           />
@@ -805,10 +1210,15 @@ const WorkflowBuilder: React.FC = () => {
                             <input
                               type="number"
                               value={selectedNode.config.delay ? Math.floor(selectedNode.config.delay / 3600) : 24}
+                              onChange={(e) => updateNodeConfig('delay', parseInt(e.target.value) * 3600)}
                               min="0"
                               className="w-20 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                             />
-                            <select className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                            <select 
+                              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                              value={selectedNode.config.delayUnit || 'hours'}
+                              onChange={(e) => updateNodeConfig('delayUnit', e.target.value)}
+                            >
                               <option value="hours">Hours</option>
                               <option value="days">Days</option>
                               <option value="minutes">Minutes</option>
@@ -822,7 +1232,11 @@ const WorkflowBuilder: React.FC = () => {
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Condition Type
                           </label>
-                          <select className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500">
+                          <select 
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                            value={selectedNode.config.conditionType || 'contains'}
+                            onChange={(e) => updateNodeConfig('conditionType', e.target.value)}
+                          >
                             <option value="contains">Message Contains</option>
                             <option value="equals">Message Equals</option>
                             <option value="starts_with">Message Starts With</option>
@@ -836,6 +1250,8 @@ const WorkflowBuilder: React.FC = () => {
                             <input
                               type="text"
                               placeholder="Enter value"
+                              value={selectedNode.config.conditionValue || ''}
+                              onChange={(e) => updateNodeConfig('conditionValue', e.target.value)}
                               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
                             />
                           </div>
