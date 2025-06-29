@@ -73,8 +73,16 @@ function App() {
   useEffect(() => {
     // Initialize database connection and auth
     const init = async () => {
-      await initializeDatabase();
-      await initializeAuth();
+      try {
+        // Initialize database (will gracefully handle connection failures)
+        await initializeDatabase();
+        
+        // Initialize auth (will work in demo mode too)
+        await initializeAuth();
+      } catch (error) {
+        console.error('Initialization error:', error);
+        // Don't throw - let the app continue in demo mode
+      }
     };
     
     init();
