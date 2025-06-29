@@ -1,81 +1,27 @@
 import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import { Database } from '../types/supabase';
 
 export const useSupabaseConnection = () => {
-  const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [supabaseClient, setSupabaseClient] = useState<ReturnType<typeof createClient<Database>> | null>(null);
+  const [isConnected, setIsConnected] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const checkConnection = async () => {
-      setIsLoading(true);
-      
-      const supabaseUrl = localStorage.getItem('supabase_url');
-      const supabaseKey = localStorage.getItem('supabase_key');
-      
-      if (supabaseUrl && supabaseKey) {
-        try {
-          // Validate URL format before creating client
-          new URL(supabaseUrl);
-          
-          const client = createClient<Database>(supabaseUrl, supabaseKey);
-          const { error } = await client.from('users').select('count').limit(1);
-          
-          if (!error || error.code === 'PGRST116' || error.message.includes('relation "users" does not exist')) {
-            setSupabaseClient(client);
-            setIsConnected(true);
-          } else {
-            console.error('Supabase connection error:', error);
-            setIsConnected(false);
-          }
-        } catch (error) {
-          console.error('Failed to initialize Supabase client:', error);
-          setIsConnected(false);
-        }
-      } else {
-        setIsConnected(false);
-      }
-      
-      setIsLoading(false);
-    };
-    
-    checkConnection();
+    // Always connected in this version
+    setIsConnected(true);
+    setIsLoading(false);
   }, []);
 
-  const connectToSupabase = async (url: string, key: string) => {
+  const connectToSupabase = async () => {
     setIsLoading(true);
     
     try {
-      // Validate URL format
-      try {
-        new URL(url);
-      } catch (error) {
-        console.error('Invalid URL format:', error);
-        setIsLoading(false);
-        return false;
-      }
+      // Simulate connection delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const client = createClient<Database>(url, key);
-      const { error } = await client.from('users').select('count').limit(1);
-      
-      if (error && error.code !== 'PGRST116' && !error.message.includes('relation "users" does not exist')) {
-        console.error('Supabase connection error:', error);
-        setIsConnected(false);
-        setIsLoading(false);
-        return false;
-      }
-      
-      // Store credentials in localStorage
-      localStorage.setItem('supabase_url', url);
-      localStorage.setItem('supabase_key', key);
-      
-      setSupabaseClient(client);
       setIsConnected(true);
       setIsLoading(false);
       return true;
     } catch (error) {
-      console.error('Failed to initialize Supabase client:', error);
+      console.error('Failed to connect to Supabase:', error);
       setIsConnected(false);
       setIsLoading(false);
       return false;
@@ -83,16 +29,15 @@ export const useSupabaseConnection = () => {
   };
 
   const disconnectFromSupabase = () => {
-    localStorage.removeItem('supabase_url');
-    localStorage.removeItem('supabase_key');
-    setSupabaseClient(null);
-    setIsConnected(false);
+    // In this version, we don't actually disconnect
+    // Just simulate the action
+    setIsConnected(true);
   };
 
   return {
     isConnected,
     isLoading,
-    supabaseClient,
+    supabaseClient: null,
     connectToSupabase,
     disconnectFromSupabase
   };

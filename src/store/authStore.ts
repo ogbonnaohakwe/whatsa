@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 interface User {
@@ -24,6 +23,26 @@ interface AuthState {
   initializeAuth: () => Promise<void>;
 }
 
+// Demo user accounts
+const demoUsers = [
+  {
+    id: '1',
+    email: 'user@example.com',
+    password: 'password',
+    name: 'Regular User',
+    role: 'user',
+    profilePicture: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100'
+  },
+  {
+    id: '2',
+    email: 'admin@example.com',
+    password: 'password',
+    name: 'Admin User',
+    role: 'admin',
+    profilePicture: 'https://images.pexels.com/photos/762020/pexels-photo-762020.jpeg?auto=compress&cs=tinysrgb&w=100'
+  }
+];
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -42,40 +61,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       initializeAuth: async () => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session?.user) {
-            // Get user profile from database
-            const { data: userData, error } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-              
-            if (error) {
-              console.error('Failed to load user profile:', error);
-              // Clear invalid session
-              await supabase.auth.signOut();
-              return;
-            }
-            
-            const user: User = {
-              id: userData.id,
-              email: userData.email,
-              name: userData.name,
-              profilePicture: userData.profile_picture || undefined,
-              role: userData.role || 'user'
-            };
-            
-            set({ 
-              user,
-              isAuthenticated: true,
-              token: session.access_token,
-            });
-          }
-        } catch (error) {
-          console.error('Auth initialization failed:', error);
+        // Check if we have a stored user
+        const { user } = get();
+        if (user) {
+          set({ isAuthenticated: true });
         }
       },
 
@@ -83,61 +72,36 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-
-          if (error) {
-            set({ 
-              isLoading: false, 
-              error: error.message
-            });
-            return { success: false, isAdmin: false };
-          }
-
-          if (data.user) {
-            // Get user profile from database
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', data.user.id)
-              .single();
-              
-            if (userError) {
-              set({ 
-                isLoading: false, 
-                error: 'Failed to load user profile'
-              });
-              return { success: false, isAdmin: false };
-            }
-            
+          // Find user in demo accounts
+          const demoUser = demoUsers.find(u => u.email === email && u.password === password);
+          
+          if (demoUser) {
             const user: User = {
-              id: userData.id,
-              email: userData.email,
-              name: userData.name,
-              profilePicture: userData.profile_picture || undefined,
-              role: userData.role || 'user'
+              id: demoUser.id,
+              email: demoUser.email,
+              name: demoUser.name,
+              profilePicture: demoUser.profilePicture,
+              role: demoUser.role
             };
 
-            const isAdmin = user.role === 'admin';
+            const isAdmin = demoUser.role === 'admin';
             
             set({ 
               user,
               isAuthenticated: true,
-              token: data.session?.access_token || null,
+              token: `token_${demoUser.id}`,
               isLoading: false,
             });
             
-            toast.success(`Welcome back, ${user.name}!`);
+            toast.success(`Welcome back, ${demoUser.name}!`);
             return { success: true, isAdmin };
+          } else {
+            set({ 
+              isLoading: false, 
+              error: 'Invalid credentials. Please check your email and password.' 
+            });
+            return { success: false, isAdmin: false };
           }
-          
-          set({ 
-            isLoading: false, 
-            error: 'Invalid credentials. Please check your email and password.' 
-          });
-          return { success: false, isAdmin: false };
         } catch (error) {
           set({ 
             isLoading: false, 
@@ -151,67 +115,34 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: {
-                name,
-              },
-            },
-          });
-
-          if (error) {
+          // Check if email already exists
+          const existingUser = demoUsers.find(u => u.email === email);
+          if (existingUser) {
             set({ 
               isLoading: false, 
-              error: error.message
+              error: 'Email already exists. Please use a different email.' 
             });
             return false;
           }
-
-          if (data.user) {
-            // Create user profile in database
-            const { error: profileError } = await supabase
-              .from('users')
-              .insert({
-                id: data.user.id,
-                name,
-                email,
-                role: 'user',
-                whatsapp_connected: false,
-              });
-              
-            if (profileError) {
-              set({ 
-                isLoading: false, 
-                error: 'Failed to create user profile'
-              });
-              return false;
-            }
-
-            const user: User = {
-              id: data.user.id,
-              email,
-              name,
-              role: 'user',
-            };
-            
-            set({ 
-              user,
-              isAuthenticated: true,
-              token: data.session?.access_token || null,
-              isLoading: false,
-            });
-            
-            toast.success(`Welcome to WhatsApp Autoresponder, ${name}!`);
-            return true;
-          }
+          
+          // Create new user
+          const newUser: User = {
+            id: Date.now().toString(),
+            email,
+            name,
+            role: 'user',
+            profilePicture: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=100'
+          };
           
           set({ 
-            isLoading: false, 
-            error: 'Registration failed. Please try again.' 
+            user: newUser,
+            isAuthenticated: true,
+            token: `token_${newUser.id}`,
+            isLoading: false,
           });
-          return false;
+          
+          toast.success(`Welcome to WhatsApp Autoresponder, ${name}!`);
+          return true;
         } catch (error) {
           set({ 
             isLoading: false, 
@@ -223,8 +154,6 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try {
-          await supabase.auth.signOut();
-          
           set({ 
             user: null, 
             isAuthenticated: false, 

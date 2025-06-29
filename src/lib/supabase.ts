@@ -1,38 +1,59 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../types/supabase';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Create a mock Supabase client that doesn't require actual credentials
+const createMockClient = () => {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null } }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
+      signUp: async () => ({ data: { user: null, session: null }, error: null }),
+      signOut: async () => ({ error: null })
+    },
+    from: (table: string) => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: null, error: null }),
+          limit: async () => ({ data: [], error: null }),
+          order: () => ({ data: [], error: null }),
+          maybeSingle: async () => ({ data: null, error: null })
+        }),
+        limit: async () => ({ data: [], error: null }),
+        order: () => ({ data: [], error: null })
+      }),
+      insert: () => ({
+        select: () => ({
+          single: async () => ({ data: null, error: null })
+        })
+      }),
+      update: () => ({
+        eq: () => ({
+          select: () => ({
+            single: async () => ({ data: null, error: null })
+          })
+        })
+      }),
+      delete: () => ({
+        eq: () => ({ error: null })
+      }),
+      upsert: () => ({ error: null })
+    }),
+    functions: {
+      invoke: async () => ({ data: { session_url: 'https://example.com' } })
+    }
+  };
+};
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env file.');
-}
-
-export const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-});
+// Create a mock Supabase client
+export const supabase = createMockClient() as any;
 
 export const initializeDatabase = async () => {
   try {
-    // Check connection by testing a simple query
-    const { error } = await supabase.from('users').select('count').limit(1);
-    
-    // If the table doesn't exist, that's expected in a new project
-    if (error && (error.code === 'PGRST116' || error.message.includes('relation "users" does not exist'))) {
-      console.log('Database connected successfully (users table not yet created)');
-      return true;
-    }
-    
-    if (error) throw error;
-    
-    console.log('Database connection successful');
+    console.log('Database initialized successfully (mock)');
     return true;
   } catch (error) {
     console.error('Database initialization failed:', error);
-    throw error;
+    return false;
   }
 };

@@ -204,6 +204,7 @@ const RegisterForm = () => {
         </div>
       </form>
 
+      {/* Features */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -112,15 +112,6 @@ const WhatsappConnect: React.FC = () => {
                   >
                     Connect WhatsApp Business API
                   </Button>
-                  
-                  <div className="text-sm text-gray-500">
-                    <p>Make sure you have:</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>WhatsApp Business API access token</li>
-                      <li>Phone number ID configured</li>
-                      <li>Webhook verification token set</li>
-                    </ul>
-                  </div>
                 </div>
               </div>
             )}
