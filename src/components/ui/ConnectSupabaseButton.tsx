@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Button from './Button';
-import { Database, Server, CheckCircle, AlertCircle, Loader } from 'lucide-react';
+import { Database, Server, CheckCircle, Loader } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 

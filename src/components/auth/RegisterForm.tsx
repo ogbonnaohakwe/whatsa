@@ -68,7 +68,6 @@ const RegisterForm = () => {
 
   return (
     <div className="space-y-6">
-      {/* Demo Info */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -77,16 +76,11 @@ const RegisterForm = () => {
       >
         <h3 className="text-sm font-semibold text-blue-900 mb-2 flex items-center">
           <Info size={16} className="mr-2" />
-          Demo Registration
+          Account Creation
         </h3>
         <p className="text-sm text-blue-700 mb-2">
-          Create a demo account to explore all features, or use existing demo accounts from the login page.
+          Create your account to access all features of the WhatsApp Autoresponder platform.
         </p>
-        <div className="text-xs text-blue-600">
-          <p>• Full access to all features</p>
-          <p>• Pre-loaded sample data</p>
-          <p>• No credit card required</p>
-        </div>
       </motion.div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -210,7 +204,6 @@ const RegisterForm = () => {
         </div>
       </form>
 
-      {/* Demo Features */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

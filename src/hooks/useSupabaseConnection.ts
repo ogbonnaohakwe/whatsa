@@ -22,7 +22,7 @@ export const useSupabaseConnection = () => {
           const client = createClient<Database>(supabaseUrl, supabaseKey);
           const { error } = await client.from('users').select('count').limit(1);
           
-          if (!error) {
+          if (!error || error.code === 'PGRST116' || error.message.includes('relation "users" does not exist')) {
             setSupabaseClient(client);
             setIsConnected(true);
           } else {
@@ -59,7 +59,7 @@ export const useSupabaseConnection = () => {
       const client = createClient<Database>(url, key);
       const { error } = await client.from('users').select('count').limit(1);
       
-      if (error) {
+      if (error && error.code !== 'PGRST116' && !error.message.includes('relation "users" does not exist')) {
         console.error('Supabase connection error:', error);
         setIsConnected(false);
         setIsLoading(false);

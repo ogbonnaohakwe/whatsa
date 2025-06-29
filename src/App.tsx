@@ -74,14 +74,13 @@ function App() {
     // Initialize database connection and auth
     const init = async () => {
       try {
-        // Initialize database (will gracefully handle connection failures)
+        // Initialize database
         await initializeDatabase();
         
-        // Initialize auth (will work in demo mode too)
+        // Initialize auth
         await initializeAuth();
       } catch (error) {
         console.error('Initialization error:', error);
-        // Don't throw - let the app continue in demo mode
       }
     };
     
