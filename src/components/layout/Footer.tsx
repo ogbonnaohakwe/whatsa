@@ -86,7 +86,7 @@ const Footer: React.FC = () => {
         
         <div className="mt-12 border-t border-gray-200 pt-8">
           <p className="text-base text-gray-500 text-center">
-            &copy; {new Date().getFullYear()} WhatsApp Autoresponder. All rights reserved.
+            &copy; {new Date().getFullYear()} A Project By Ogbonna Ohakwe.
           </p>
           <div className="mt-4 flex justify-center space-x-6">
             <Link to="/terms" className="text-sm text-gray-600 hover:text-gray-900">
