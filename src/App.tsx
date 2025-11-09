@@ -45,6 +45,20 @@ import AnalyticsPage from './pages/admin/AnalyticsPage';
 import SecurityPage from './pages/admin/SecurityPage';
 import IntegrationsManagement from './pages/admin/IntegrationsManagement';
 import EmailSettings from './pages/admin/EmailSettings';
+import AdminActivityLogsPage from './pages/admin/ActivityLogsPage';
+import AdminSubscriptionsPage from './pages/admin/SubscriptionsPage';
+import AdminPermissionsPage from './pages/admin/PermissionsPage';
+import AdminAutomationsPage from './pages/admin/AutomationsPage';
+import AdminMessagesPage from './pages/admin/MessagesPage';
+import AdminCampaignsPage from './pages/admin/CampaignsPage';
+import AdminLeadPagesPage from './pages/admin/LeadPagesPage';
+import AdminWebhooksPage from './pages/admin/WebhooksPage';
+import AdminApiKeysPage from './pages/admin/ApiKeysPage';
+import AdminDatabasePage from './pages/admin/DatabasePage';
+import AdminServerStatusPage from './pages/admin/ServerStatusPage';
+import AdminAlertsPage from './pages/admin/AlertsPage';
+import AdminSupportPage from './pages/admin/SupportPage';
+import AdminSettingsPage from './pages/admin/SettingsPage';
 
 // Protected Route Components
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -166,19 +180,49 @@ function App() {
             <AdminDashboard />
           </AdminRoute>
         } />
+        <Route path="/admin/activity" element={
+          <AdminRoute>
+            <AdminActivityLogsPage />
+          </AdminRoute>
+        } />
         <Route path="/admin/users" element={
           <AdminRoute>
             <UsersPage />
           </AdminRoute>
         } />
+        <Route path="/admin/subscriptions" element={
+          <AdminRoute>
+            <AdminSubscriptionsPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/permissions" element={
+          <AdminRoute>
+            <AdminPermissionsPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/automations" element={
+          <AdminRoute>
+            <AdminAutomationsPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/messages" element={
+          <AdminRoute>
+            <AdminMessagesPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/campaigns" element={
+          <AdminRoute>
+            <AdminCampaignsPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/lead-pages" element={
+          <AdminRoute>
+            <AdminLeadPagesPage />
+          </AdminRoute>
+        } />
         <Route path="/admin/analytics" element={
           <AdminRoute>
             <AnalyticsPage />
-          </AdminRoute>
-        } />
-        <Route path="/admin/security" element={
-          <AdminRoute>
-            <SecurityPage />
           </AdminRoute>
         } />
         <Route path="/admin/integrations" element={
@@ -189,6 +233,46 @@ function App() {
         <Route path="/admin/email-settings" element={
           <AdminRoute>
             <EmailSettings />
+          </AdminRoute>
+        } />
+        <Route path="/admin/webhooks" element={
+          <AdminRoute>
+            <AdminWebhooksPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/api-keys" element={
+          <AdminRoute>
+            <AdminApiKeysPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/database" element={
+          <AdminRoute>
+            <AdminDatabasePage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/server" element={
+          <AdminRoute>
+            <AdminServerStatusPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/security" element={
+          <AdminRoute>
+            <SecurityPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/alerts" element={
+          <AdminRoute>
+            <AdminAlertsPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/support" element={
+          <AdminRoute>
+            <AdminSupportPage />
+          </AdminRoute>
+        } />
+        <Route path="/admin/settings" element={
+          <AdminRoute>
+            <AdminSettingsPage />
           </AdminRoute>
         } />
         
